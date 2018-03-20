@@ -102,17 +102,21 @@ module.exports = class Events {
 				promises.push(mapperRow.target.emit(name, ...args));
 			}
 		});
-		let useFn = async (list) => await tools.iterate(list, async (fn) => {
+
+		await tools.iterate(this._middlewares, async (fn) => {
 			const fnRet = await fn(name, ...args);
 			if (tools.isArray(fnRet)) args = fnRet;
 		});
 
-		await useFn(this._middlewares);
 		mapperFn(this._eventMappers);
 		tools.iterate(this._eventsList[name], (fn, id) => promises.push(fn(...args)));
 		mapperFn(this._eventMappersAfter);
-		const ret = await Promise.all(promises);
-		await useFn(this._middlewaresAfter);
+		let ret = await Promise.all(promises);
+
+		await tools.iterate(this._middlewaresAfter, async (fn) => {
+			const fnRet = await fn(name, ret, ...args);
+			if (!tools.isUndefined(fnRet)) ret = fnRet;
+		});
 
 		return ret;
 	};
@@ -127,19 +131,22 @@ module.exports = class Events {
 				}
 			});
 		};
-		let useFn = async (list) => await tools.iterate(list, async (fn) => {
+
+		await tools.iterate(this._middlewares, async (fn) => {
 			const fnRet = await fn(name, ...args);
 			if (tools.isArray(fnRet)) args = fnRet;
 		});
 
-		await useFn(this._middlewares);
 		await mapperFn(this._eventMappers);
-		const ret = await tools.iterate(this._eventsList[name], async (fn, id, iter) => {
+		let ret = await tools.iterate(this._eventsList[name], async (fn, id, iter) => {
 			iter.key(id);
 			return await fn(...args);
 		}, {});
 		await mapperFn(this._eventMappersAfter);
-		await useFn(this._middlewaresAfter);
+		await tools.iterate(this._middlewaresAfter, async (fn) => {
+			const fnRet = await fn(name, ret, ...args);
+			if (!tools.isUndefined(fnRet)) ret = fnRet;
+		});
 
 		return ret;
 	}
