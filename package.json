@@ -1,11 +1,11 @@
 {
-	"name": "osmium-events",
-	"description": "Osmium events",
-	"license": "MIT",
-	"author": "Vasiliy Isaichkin <vasiliy@isaichkin.ru>",
-	"repository": "https://github.com/VasiliyIsaichkin/osmium-events",
-	"version": "0.2.0",
-	"dependencies": {
+	"name"           : "osmium-events",
+	"description"    : "Osmium events",
+	"license"        : "MIT",
+	"author"         : "Vasiliy Isaichkin <vasiliy@isaichkin.ru>",
+	"repository"     : "https://github.com/VasiliyIsaichkin/osmium-events",
+	"version"        : "0.2.0",
+	"dependencies"   : {
 		"osmium-tools": "^0.1.0"
 	},
 	"devDependencies": {
