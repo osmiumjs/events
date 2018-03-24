@@ -1,12 +1,13 @@
 const tools = require('osmium-tools');
 
 module.exports = class Events {
-	constructor() {
+	constructor(defaultChain = false) {
 		this._eventsList = {};
 		this._eventMappers = [];
 		this._eventMappersAfter = [];
 		this._middlewares = [];
 		this._middlewaresAfter = [];
+		this._defaultChain = defaultChain;
 	}
 
 	off(targetId) {
@@ -62,7 +63,7 @@ module.exports = class Events {
 		const _on = (event, eventCb) => {
 			let id = tools.GUID();
 			this._eventsList[event] = this._eventsList[event] || {};
-			this._eventsList[event][id] = eventCb;
+			this._eventsList[event][id] = {cb: eventCb, time: Date.now()};
 			return id;
 		};
 
@@ -93,62 +94,80 @@ module.exports = class Events {
 		return new Promise((resolve) => this.once(name, resolve));
 	}
 
-	async emit(name, ...args) {
+	async emitEx(name, chainable, mwConfig, ...args) {
 		let promises = [];
-		let mapperFn = (list) => tools.iterate(list, (mapperRow) => {
+		let exitVal;
+		let ret = {};
+
+		const mapperFn = (list) => tools.iterate(list, (mapperRow) => {
 			if (tools.isFunction(mapperRow.target.emit) && (
 				mapperRow.list === false
 				|| tools.arrayToObject(mapperRow.list)[name])) {
-				promises.push(mapperRow.target.emit(name, ...args));
+				promises.push(mapperRow.target.emitEx(name, false, {fromMapper: true}, ...args));
 			}
 		});
 
-		await tools.iterate(this._middlewares, async (fn) => {
-			const fnRet = await fn(name, ...args);
-			if (tools.isArray(fnRet)) args = fnRet;
-		});
-
-		mapperFn(this._eventMappers);
-		tools.iterate(this._eventsList[name], (fn, id) => promises.push(fn(...args)));
-		mapperFn(this._eventMappersAfter);
-		let ret = await Promise.all(promises);
-
-		await tools.iterate(this._middlewaresAfter, async (fn) => {
-			const fnRet = await fn(name, ret, ...args);
-			if (!tools.isUndefined(fnRet)) ret = fnRet;
-		});
-
-		return ret;
-	};
-
-	async emitChain(name, ...args) {
-		let mapperFn = async (list) => {
+		const mapperFnChain = async (list) => {
 			await tools.iterate(list, async (mapperRow) => {
 				if (tools.isFunction(mapperRow.target.emit) && (
 					mapperRow.list === false
 					|| tools.arrayToObject(mapperRow.list)[name])) {
-					await mapperRow.target.emitChain(name, ...args);
+					Object.assign(ret, await mapperRow.target.emitEx(name, true, {fromMapper: true}, ...args));
 				}
 			});
 		};
 
-		await tools.iterate(this._middlewares, async (fn) => {
-			const fnRet = await fn(name, ...args);
-			if (tools.isArray(fnRet)) args = fnRet;
+		Object.assign(mwConfig, {
+			ignore     : false,
+			ignoreFalse: false,
+			dontExit   : false
 		});
 
-		await mapperFn(this._eventMappers);
-		let ret = await tools.iterate(this._eventsList[name], async (fn, id, iter) => {
-			iter.key(id);
-			return await fn(...args);
-		}, {});
-		await mapperFn(this._eventMappersAfter);
+		if (!mwConfig.ignore) {
+			await tools.iterate(this._middlewares, async (fn) => {
+				if (!tools.isFunction(fn)) return;
+				const fnRet = await fn(name, mwConfig, ...args);
+				if (tools.isArray(fnRet)) args = fnRet;
+				if (tools.isObject(fnRet)) exitVal = fnRet;
+			});
+		}
+
+		if (exitVal && mwConfig.dontExit !== true) return exitVal.ret;
+
+		await (chainable ? mapperFnChain : mapperFn)(this._eventMappers);
+		if (chainable) {
+			await tools.iterate(this._eventsList[name], async (rec, id, iter) => {
+				iter.key(id);
+				return await rec.cb(...args);
+			}, ret);
+		} else {
+			tools.iterate(this._eventsList[name], (row) => promises.push(row.cb(...args)));
+			ret = await Promise.all(promises);
+			promises = [];
+		}
+		await (chainable ? mapperFnChain : mapperFn)(this._eventMappersAfter);
+		if (!chainable) {
+			ret.concat(await Promise.all(promises));
+		}
+
 		await tools.iterate(this._middlewaresAfter, async (fn) => {
-			const fnRet = await fn(name, ret, ...args);
+			const fnRet = await fn(name, mwConfig, ret, ...args);
 			if (!tools.isUndefined(fnRet)) ret = fnRet;
 		});
 
-		return ret;
+		return tools.isObject(ret) ? Object.keys(ret).length === 0 ? undefined : ret : tools.isArray(ret) ? ret.length === 0 ? undefined : ret : ret;
+	}
+
+	async emit(name, ...args) {
+		return await this[this._defaultChain ? 'emitChain' : 'emitParallel'](name, ...args);
+	}
+
+	async emitParallel(name, ...args) {
+		return await this.emitEx(name, false, false, ...args);
+	};
+
+	async emitChain(name, ...args) {
+		return await this.emitEx(name, true, false, ...args);
 	}
 };
 
