@@ -21,12 +21,20 @@ module.exports = class Events {
 		}, {});
 	}
 
+	useFirst(handler) {
+		return this._middlewares.reverse().push(handler).reverse();
+	}
+
 	use(handler) {
 		return this._middlewares.push(handler);
 	}
 
 	unUse(handlerId) {
 		this._middlewares.splice(handlerId - 1, 1);
+	}
+
+	useAfterFirst(handler) {
+		return this._middlewaresAfter.reverse().push(handler).reverse();
 	}
 
 	useAfter(handler) {
