@@ -98,8 +98,12 @@ module.exports = class Events {
 		}
 	};
 
-	wait(name) {
-		return new Promise((resolve) => this.once(name, resolve));
+	wait(name, cb) {
+		return new Promise((resolve) => this.once(name, async (...args) => {
+			const ret = await (cb || tools.nop$)(...args);
+			resolve(args);
+			return ret;
+		}));
 	}
 
 	async emitEx(name, chainable, mwConfig, ...args) {
@@ -178,5 +182,3 @@ module.exports = class Events {
 		return await this.emitEx(name, true, false, ...args);
 	}
 };
-
-
