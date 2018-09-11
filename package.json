@@ -4,7 +4,7 @@
 	"license"        : "MIT",
 	"author"         : "Vasiliy Isaichkin <vasiliy@isaichkin.ru>",
 	"repository"     : "https://github.com/VasiliyIsaichkin/osmium-events",
-	"version"        : "0.3.5",
+	"version"        : "0.3.6",
 	"dependencies"   : {
 		"osmium-tools": "^0.1.11"
 	},
