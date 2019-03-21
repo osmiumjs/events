@@ -2,13 +2,17 @@
 	"name"           : "osmium-events",
 	"description"    : "Osmium events",
 	"license"        : "MIT",
-	"author"         : "Vasiliy Isaichkin <vasiliy@isaichkin.ru>",
+	"author"         : {
+		"name" : "Vasiliy Isaichkin",
+		"email": "vasiliy@isaichkin.ru"
+	},
 	"repository"     : "https://github.com/VasiliyIsaichkin/osmium-events",
-	"version"        : "0.3.7",
+	"version"        : "0.3.8",
+	"main"           : "index.js",
 	"dependencies"   : {
-		"osmium-tools": "^0.1.12"
+		"osmium-tools": "^0.2.2"
 	},
 	"devDependencies": {
-		"mocha": "^5.0.5"
+		"mocha": "^6.0.2"
 	}
 }

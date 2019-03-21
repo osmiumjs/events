@@ -67,6 +67,16 @@ module.exports = class Events {
 		this._eventMappersAfter.splice(id - 1, 1);
 	}
 
+	exist(name, inMappingsToo = true) {
+		let ret = false;
+		if (inMappingsToo) {
+			tools.iterate(this._eventMappers.concat(this._eventMappersAfter), (row) => {
+				if (row.target.exist(name)) ret = true;
+			});
+		}
+		return ret ? ret : !!this._eventsList[name];
+	}
+
 	on(name, cb) {
 		const _on = (event, eventCb) => {
 			let id = tools.GUID();
