@@ -7,12 +7,12 @@
 		"email": "vasiliy@isaichkin.ru"
 	},
 	"repository"     : "https://github.com/VasiliyIsaichkin/osmium-events",
-	"version"        : "0.3.9",
+	"version"        : "0.3.10",
 	"main"           : "index.js",
 	"dependencies"   : {
 		"osmium-tools": "^0.2.2"
 	},
 	"devDependencies": {
-		"mocha": "^6.0.2"
+		"mocha": "^6.1.4"
 	}
 }

@@ -11,14 +11,16 @@ module.exports = class Events {
 	}
 
 	off(targetId) {
-		targetId = tools.arrayToObject(tools.toArray(targetId), false);
-		return tools.iterate(this._eventsList, (callbacks, eventName) => {
-			return tools.iterate(callbacks, (callback, id) => {
-				if (!targetId[id]) return;
-				delete this._eventsList[eventName][id];
-				return callback;
-			}, {});
-		}, {});
+		let ret = {};
+		tools.toArray(targetId).forEach((id) => {
+			let eventName = targetId.slice(0, -36);
+			let callbacks = this._eventsList[eventName];
+			if (!callbacks) return;
+
+			ret[id] = callbacks[id];
+			delete this._eventsList[eventName][id];
+		});
+		return ret;
 	}
 
 	useFirst(handler) {
@@ -79,7 +81,7 @@ module.exports = class Events {
 
 	on(name, cb) {
 		const _on = (event, eventCb) => {
-			let id = tools.GUID();
+			let id = `${event}${tools.GUID()}`;
 			this._eventsList[event] = this._eventsList[event] || {};
 			this._eventsList[event][id] = {cb: eventCb, time: Date.now()};
 			return id;
