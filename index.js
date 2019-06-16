@@ -24,7 +24,7 @@ module.exports = class Events {
 	}
 
 	useFirst(handler) {
-		return this._middlewares.reverse().push(handler).reverse();
+		return this._middlewares.unshift(handler);
 	}
 
 	use(handler) {
@@ -36,7 +36,7 @@ module.exports = class Events {
 	}
 
 	useAfterFirst(handler) {
-		return this._middlewaresAfter.reverse().push(handler).reverse();
+		return this._middlewaresAfter.unshift(handler);
 	}
 
 	useAfter(handler) {
