@@ -185,7 +185,7 @@ module.exports = class Events {
 			if (!oTools.isUndefined(fnRet)) ret = fnRet;
 		});
 
-		return oTools.isObject(ret) ? Object.keys(ret).length === 0 ? undefined : ret : oTools.isArray(ret) ? ret.length === 0 ? undefined : ret : ret;
+		return ret;
 	}
 
 	async emit(name, ...args) {
