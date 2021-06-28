@@ -1,1 +1,1 @@
-[Documents](https://osmiumjs.github.io/events/)
+[Documentation](https://osmiumjs.github.io/events/)
