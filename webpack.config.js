@@ -13,12 +13,17 @@ module.exports = {
 	},
 	resolve: {
 		extensions: ['.ts', '.js'],
+		fallback  : {
+			crypto: false
+		}
 	},
 	module : {
-		rules: [{
-			test  : /\.ts$/,
-			loader: 'awesome-typescript-loader'
-		}]
+		rules: [
+			{
+				test  : /\.ts$/,
+				loader: 'ts-loader'
+			}
+		]
 	},
 	plugins: []
 };

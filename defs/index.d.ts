@@ -4,9 +4,6 @@ export declare class EventInformation {
     time: number;
     constructor(cb: Function, time: number);
 }
-/**
- * @class Events
- */
 export declare class Events {
     private eventIdPrefix;
     private eventsList;
@@ -16,153 +13,61 @@ export declare class Events {
     private middlewaresAfter;
     private readonly defaultChain;
     private readonly UNDEFINED;
-    /**
-     * @constructor
-     * @param {boolean} [defaultChain=false] - If true use emitChain as default for emit, if false use emitParallel (default)
-     */
     constructor(defaultChain?: boolean);
     private getUID;
-    /**
-     * Clear event's list
-     */
+    /** Clear event's list */
     clear(): void;
-    /**
-     * Reset all states
-     */
+    /** Reset all states */
     reset(): void;
-    /**
-     * Remove event by EventId or array of EventId
-     * @param {EventIds | EventName | Array<EventName>} targetId - EventId or array of EventId
-     * @param onlyEventNames
-     * @returns {{[EventID]: {EventCallback}}} Affected events
-     */
+    /** Remove event by EventId or array of EventId */
     off(targetId: EventName, onlyEventNames: boolean): AffectedEventIds | false;
     off(targetId: EventNames, onlyEventNames: boolean): AffectedEventIds | false;
     off(targetId: EventName | EventNames, onlyEventNames: boolean): AffectedEventIds | false;
     off(targetId: EventIds): AffectedEventIds | false;
     off(targetId: EventId): AffectedEventIds | false;
-    /**
-     * Remove event by name
-     * @param {EventName|EventNames} eventName - Event name
-     * @return {AffectedEventIds}
-     */
+    /** Remove event by name */
     offEvent(eventName: EventName | EventNames): AffectedEventIds | false;
-    /**
-     * Add (prepend) 'before' middleware
-     * @param {Function} handler - MiddlewareBefore handler callback
-     * @returns {number} MiddlewareBefore position
-     */
+    /** Add (prepend) 'before' middleware */
     useFirst(handler: Function): number;
-    /**
-     * Add (append) 'before' middleware
-     * @param {Function} handler - MiddlewareBefore handler callback
-     * @returns {number} MiddlewareBefore position
-     */
+    /** Add (append) 'before' middleware */
     use(handler: Function): number;
-    /**
-     * Remove 'before' middleware by MiddlewareBefore id
-     * @param {Number} handlerPosition - MiddlewareBefore position
-     */
+    /** Remove 'before' middleware by MiddlewareBefore id */
     unUse(handlerPosition: number): void;
-    /**
-     * Add (prepend) 'after' middleware
-     * @param {Function<*>} handler - Middleware handler callback
-     * @returns {number} MiddlewareAfter position
-     */
+    /** Add (prepend) 'after' middleware */
     useAfterFirst(handler: Function): number;
-    /**
-     * Add (append) 'after' middleware
-     * @param {Function<*>} handler - Middleware handler callback
-     * @returns {number} MiddlewareAfter position
-     */
+    /** Add (append) 'after' middleware */
     useAfter(handler: Function): number;
-    /**
-     * Remove 'after' middleware by MiddlewareAfter id
-     * @param {Number} handlerPosition - MiddlewareAfter position
-     */
+    /** Remove 'after' middleware by MiddlewareAfter id */
     unUseAfter(handlerPosition: number): void;
-    /**
-     * Get events names list
-     * @returns {EventNames}
-     */
+    /** Get events names list */
     getEventsList(): EventNames;
-    /**
-     * Get events names by RegExp pattern
-     * @param {String} findStr - RegExp pattern without /^ $/gi
-     *, @returns {EventName[]}
-     */
+    /** Get events names by RegExp pattern */
     getEvents(findStr: string): EventName[];
-    /**
-     * Map events 'before'
-     * @param {Events} target
-     * @param {MapList} list
-     * @returns {Number} Event mapper position
-     */
+    /** Map events 'before' */
     mapEvents(target: Events, list?: MapList): number;
-    /**
-     * Remove 'before' event mapper by position
-     * @param {Number} position
-     */
+    /** Remove 'before' event mapper by position */
     unmapEvents(position: number): void;
-    /**
-     * Map events 'after'
-     * @param {Events} target
-     * @param {MapList} list
-     * @returns {Number}
-     */
+    /** Map events 'after' */
     mapEventsAfter(target: Events, list?: MapList): number;
-    /**
-     * Remove 'after' event mapper by id
-     * @param {Number} position
-     */
+    /** Remove 'after' event mapper by id */
     unmapEventsAfter(position: number): void;
-    /**
-     * Check event exists
-     * @param {String | RegExp} what
-     * @param {Boolean} inMappingsToo
-     * @returns {boolean}
-     */
+    /** Check event exists */
     exists(what: EventName | RegExp, inMappingsToo?: boolean): boolean;
+    /** Register event */
     on(name: EventName, cb: EventCallback): EventId;
     on(name: EventNamesWithCallbacks): EventIds;
+    /**  Register event and self-remove after first call */
     once(name: EventNamesWithCallbacks): EventIds;
     once(name: EventName, cb: EventCallback): EventId;
-    /**
-     * Await event emit
-     * @param {EventName} name - Event name
-     * @param {Function<*>|Boolean} [cb=false] - Callback for event (result returned to emitter)
-     * @returns {Promise<*[]>} Return array of event call args
-     */
+    /** Await event emit */
     wait(name: EventName, cb?: EventCallbackSpread | Boolean): Promise<Array<any | void>>;
-    /**
-     * Advanced event emit
-     * @param {EventName} name - Event name
-     * @param {Boolean} chainable - Use chain emit call if true
-     * @param configParam
-     * @param {...*} args - Event call args
-     * @returns {Promise<{}|*>}
-     */
+    /** Advanced event emit */
     emitEx(name: EventName, chainable: boolean, configParam: Config | false, ...args: any[]): Promise<Object | any>;
-    /**
-     * Event emit (call)
-     * @param {EventName} name - Event name
-     * @param {...*} args - Event call args
-     * @returns {Promise<*>|Function<*>}
-     */
+    /** Event emit (call) */
     emit(name: EventName, ...args: any[]): ReturnAsyncEmitResult;
-    /**
-     * Event emit (call) as parallel
-     * @param {EventName} name - Event name
-     * @param {...*} args - Event call args
-     * @returns {Promise<*>|Function<*>}
-     */
+    /** Event emit (call) as parallel */
     emitParallel(name: EventName, ...args: any[]): ReturnAsyncEmitResult;
-    /**
-     * Event emit (call) as chain
-     * @param {EventName} name - Event name
-     * @param {...*} args - Event call args
-     * @returns {Promise<*>|Function<*>}
-     */
+    /** Event emit (call) as chain */
     emitChain(name: EventName, ...args: any[]): ReturnAsyncEmitResult;
 }
 export * from './types';

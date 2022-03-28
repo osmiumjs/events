@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -13,42 +17,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Events = exports.EventInformation = void 0;
 const tools = require("@osmium/tools");
 class EventInformation {
+    cb;
+    time;
     constructor(cb, time) {
         this.cb = cb;
         this.time = time;
     }
 }
 exports.EventInformation = EventInformation;
-/**
- * @class Events
- */
 class Events {
-    /**
-     * @constructor
-     * @param {boolean} [defaultChain=false] - If true use emitChain as default for emit, if false use emitParallel (default)
-     */
+    eventIdPrefix = '#';
+    eventsList = {};
+    eventMappers = [];
+    eventMappersAfter = [];
+    middlewares = [];
+    middlewaresAfter = [];
+    defaultChain;
+    UNDEFINED = Symbol('UNDEFINED');
     constructor(defaultChain = false) {
-        this.eventIdPrefix = '#';
-        this.eventsList = {};
-        this.eventMappers = [];
-        this.eventMappersAfter = [];
-        this.middlewares = [];
-        this.middlewaresAfter = [];
-        this.UNDEFINED = Symbol('UNDEFINED');
         this.defaultChain = defaultChain;
     }
     getUID() {
         return tools.UID(this.eventIdPrefix);
     }
-    /**
-     * Clear event's list
-     */
+    /** Clear event's list */
     clear() {
         this.eventsList = {};
     }
-    /**
-     * Reset all states
-     */
+    /** Reset all states */
     reset() {
         this.middlewares = [];
         this.middlewaresAfter = [];
@@ -80,113 +76,65 @@ class Events {
         });
         return affectedEvents;
     }
-    /**
-     * Remove event by name
-     * @param {EventName|EventNames} eventName - Event name
-     * @return {AffectedEventIds}
-     */
+    /** Remove event by name */
     offEvent(eventName) {
         return this.off(eventName, true);
     }
-    /**
-     * Add (prepend) 'before' middleware
-     * @param {Function} handler - MiddlewareBefore handler callback
-     * @returns {number} MiddlewareBefore position
-     */
+    /** Add (prepend) 'before' middleware */
     useFirst(handler) {
         return this.middlewares.unshift(handler);
     }
-    /**
-     * Add (append) 'before' middleware
-     * @param {Function} handler - MiddlewareBefore handler callback
-     * @returns {number} MiddlewareBefore position
-     */
+    /** Add (append) 'before' middleware */
     use(handler) {
         return this.middlewares.push(handler);
     }
-    /**
-     * Remove 'before' middleware by MiddlewareBefore id
-     * @param {Number} handlerPosition - MiddlewareBefore position
-     */
+    /** Remove 'before' middleware by MiddlewareBefore id */
     unUse(handlerPosition) {
         this.middlewares.splice(handlerPosition - 1, 1);
     }
-    /**
-     * Add (prepend) 'after' middleware
-     * @param {Function<*>} handler - Middleware handler callback
-     * @returns {number} MiddlewareAfter position
-     */
+    /** Add (prepend) 'after' middleware */
     useAfterFirst(handler) {
         return this.middlewaresAfter.unshift(handler);
     }
-    /**
-     * Add (append) 'after' middleware
-     * @param {Function<*>} handler - Middleware handler callback
-     * @returns {number} MiddlewareAfter position
-     */
+    /** Add (append) 'after' middleware */
     useAfter(handler) {
         return this.middlewaresAfter.push(handler);
     }
-    /**
-     * Remove 'after' middleware by MiddlewareAfter id
-     * @param {Number} handlerPosition - MiddlewareAfter position
-     */
+    /** Remove 'after' middleware by MiddlewareAfter id */
     unUseAfter(handlerPosition) {
         this.middlewaresAfter.splice(handlerPosition - 1, 1);
     }
-    /**
-     * Get events names list
-     * @returns {EventNames}
-     */
+    /** Get events names list */
     getEventsList() {
         return Object.keys(this.eventsList);
     }
-    /**
-     * Get events names by RegExp pattern
-     * @param {String} findStr - RegExp pattern without /^ $/gi
-     *, @returns {EventName[]}
-     */
+    /** Get events names by RegExp pattern */
     getEvents(findStr) {
         return tools.iterate(this.eventsList, (event, name) => name.match(new RegExp(`^${findStr}$`, 'gi')) ? name : undefined, []);
     }
-    /**
-     * Map events 'before'
-     * @param {Events} target
-     * @param {MapList} list
-     * @returns {Number} Event mapper position
-     */
+    /** Map events 'before' */
     mapEvents(target, list = false) {
-        return this.eventMappers.push({ list, target });
+        return this.eventMappers.push({
+            list,
+            target
+        });
     }
-    /**
-     * Remove 'before' event mapper by position
-     * @param {Number} position
-     */
+    /** Remove 'before' event mapper by position */
     unmapEvents(position) {
         this.eventMappers.splice(position - 1, 1);
     }
-    /**
-     * Map events 'after'
-     * @param {Events} target
-     * @param {MapList} list
-     * @returns {Number}
-     */
+    /** Map events 'after' */
     mapEventsAfter(target, list = false) {
-        return this.eventMappersAfter.push({ list, target });
+        return this.eventMappersAfter.push({
+            list,
+            target
+        });
     }
-    /**
-     * Remove 'after' event mapper by id
-     * @param {Number} position
-     */
+    /** Remove 'after' event mapper by id */
     unmapEventsAfter(position) {
         this.eventMappersAfter.splice(position - 1, 1);
     }
-    /**
-     * Check event exists
-     * @param {String | RegExp} what
-     * @param {Boolean} inMappingsToo
-     * @returns {boolean}
-     */
+    /** Check event exists */
     exists(what, inMappingsToo = false) {
         let ret = false;
         if (inMappingsToo) {
@@ -198,16 +146,14 @@ class Events {
                 return ret;
         }
         if (tools.isRegExp(what)) {
-            return tools.iterate(this.getEventsList(), (eventName) => !!eventName.match(what), false);
+            let out = false;
+            tools.iterate(this.getEventsList(), (eventName) => {
+                out = out || !!eventName.match(what);
+            });
+            return out;
         }
         return !!this.eventsList[what];
     }
-    /**
-     * Register event
-     * @param {EventName | EventNamesWithCallbacks} name - Event name
-     * @param {EventCallback: Function} cb - Event callback
-     * @returns {EventID: number | EventID[]} Event id's
-     */
     on(name, cb) {
         const _on = (event, eventCb) => {
             let id = `${event}${this.getUID()}`;
@@ -216,16 +162,9 @@ class Events {
             return id;
         };
         if (tools.isObject(name))
-            return tools.iterateKeys(name, _on, []);
+            return tools.iterate(name, (a, b) => _on(b, a), []);
         return tools.isFunction(cb) ? _on(name, cb) : false;
     }
-    ;
-    /**
-     * Register event and self-remove after first call
-     * @param {EventName | EventsObjects} name - Event name
-     * @param {EventCallback} cb - Event callback
-     * @returns {EventID: number | EventID[]} Event id's
-     */
     once(name, cb) {
         const _once = (event, eventCb) => {
             let id = this.on(event, async (...args) => {
@@ -235,17 +174,11 @@ class Events {
             return id;
         };
         if (tools.isObject(name)) {
-            return tools.iterateKeys(name, _once, []);
+            return tools.iterate(name, (a, b) => _once(b, a), []);
         }
         return tools.isFunction(cb) ? _once(name, cb) : false;
     }
-    ;
-    /**
-     * Await event emit
-     * @param {EventName} name - Event name
-     * @param {Function<*>|Boolean} [cb=false] - Callback for event (result returned to emitter)
-     * @returns {Promise<*[]>} Return array of event call args
-     */
+    /** Await event emit */
     wait(name, cb = false) {
         return new Promise((resolve) => this.once(name, async (...args) => {
             const ret = await (cb || tools.nop$)(...args);
@@ -253,14 +186,7 @@ class Events {
             return ret;
         }));
     }
-    /**
-     * Advanced event emit
-     * @param {EventName} name - Event name
-     * @param {Boolean} chainable - Use chain emit call if true
-     * @param configParam
-     * @param {...*} args - Event call args
-     * @returns {Promise<{}|*>}
-     */
+    /** Advanced event emit */
     async emitEx(name, chainable, configParam, ...args) {
         let promises = [];
         let exitVal;
@@ -270,14 +196,22 @@ class Events {
         const mapperFn = (list) => tools.iterate(list, (mapperRow) => {
             if (tools.isFunction(mapperRow.target.emit)
                 && (mapperRow.list === false || tools.arrayToObject(mapperRow.list)[name])) {
-                promises.push(mapperRow.target.emitEx(name, false, { context: config.context, preCall: config.preCall, fromMapper: true }, ...args));
+                promises.push(mapperRow.target.emitEx(name, false, {
+                    context: config.context,
+                    preCall: config.preCall,
+                    fromMapper: true
+                }, ...args));
             }
         });
         const mapperFnChain = async (list) => {
             await tools.iterate(list, async (mapperRow) => {
                 if (tools.isFunction(mapperRow.target.emit)
                     && (mapperRow.list === false || tools.arrayToObject(mapperRow.list)[name])) {
-                    Object.assign(ret, await mapperRow.target.emitEx(name, true, { context: config.context, preCall: config.preCall, fromMapper: true }, ...args));
+                    Object.assign(ret, await mapperRow.target.emitEx(name, true, {
+                        context: config.context,
+                        preCall: config.preCall,
+                        fromMapper: true
+                    }, ...args));
                 }
             });
         };
@@ -301,6 +235,7 @@ class Events {
             return exitVal.ret;
         await (chainable ? mapperFnChain : mapperFn)(this.eventMappers);
         if (chainable) {
+            /** @ts-ignore */
             await tools.iterate(this.eventsList[name], async (rec, id, iter) => {
                 iter.key(id);
                 if (tools.isFunction(config.preCall) && typeof config.preCall === 'function')
@@ -320,7 +255,7 @@ class Events {
         }
         chainable ? await mapperFnChain(this.eventMappersAfter) : mapperFn(this.eventMappersAfter);
         if (!chainable) {
-            ret.concat(await Promise.all(promises));
+            ret = ret.concat(await Promise.all(promises));
         }
         await tools.iterate(this.middlewaresAfter, async (fn) => {
             const fnRet = await fn.apply(config.context, [name, config, ret, ...args]);
@@ -329,33 +264,17 @@ class Events {
         });
         return ret;
     }
-    /**
-     * Event emit (call)
-     * @param {EventName} name - Event name
-     * @param {...*} args - Event call args
-     * @returns {Promise<*>|Function<*>}
-     */
+    /** Event emit (call) */
     async emit(name, ...args) {
         return this.defaultChain ? this.emitChain(name, ...args) : this.emitParallel(name, ...args);
     }
-    /**
-     * Event emit (call) as parallel
-     * @param {EventName} name - Event name
-     * @param {...*} args - Event call args
-     * @returns {Promise<*>|Function<*>}
-     */
+    /** Event emit (call) as parallel */
     async emitParallel(name, ...args) {
-        return await this.emitEx(name, false, false, ...args);
+        return this.emitEx(name, false, false, ...args);
     }
-    ;
-    /**
-     * Event emit (call) as chain
-     * @param {EventName} name - Event name
-     * @param {...*} args - Event call args
-     * @returns {Promise<*>|Function<*>}
-     */
+    /** Event emit (call) as chain */
     async emitChain(name, ...args) {
-        return await this.emitEx(name, true, false, ...args);
+        return this.emitEx(name, true, false, ...args);
     }
 }
 exports.Events = Events;
