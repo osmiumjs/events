@@ -5,8 +5,7 @@ import {Events as EventsFull} from '../';
 // @ts-ignore
 import {Events as EventsMin} from '../dist/index.min.js';
 
-
-function doTests(Events: any, title: string) {
+function doTests(Events: EventsFull | EventsMin, title: string) {
 	const event = new Events();
 
 	describe(`==== Test for "${title}" version ====`, () => {

@@ -1,23 +1,7 @@
+import {iterate} from '@osmium/tools';
 import * as tools from '@osmium/tools';
-import {
-	AffectedEventIds,
-	Config,
-	EventCallback,
-	EventCallbackSpread,
-	EventId,
-	EventIds,
-	EventMapObject,
-	EventName,
-	EventNames,
-	EventNamesWithCallbacks,
-	EventsObjects,
-	IIteration,
-	MapList,
-	MiddlewareArray,
-	ReturnAsyncEmitResult
-} from './types';
 
-export class EventInformation {
+class EventHandler {
 	public cb: Function;
 	public time: number;
 
@@ -27,326 +11,587 @@ export class EventInformation {
 	}
 }
 
-export class Events {
-	private eventIdPrefix = '#';
+export namespace Events {
+	export type EventInstanceId = string;
 
-	private eventsList: EventsObjects = {};
-	private eventMappers: EventMapObject[] = [];
-	private eventMappersAfter: EventMapObject[] = [];
-	private middlewares: MiddlewareArray = [];
-	private middlewaresAfter: MiddlewareArray = [];
-	private readonly defaultChain: boolean;
-	private readonly UNDEFINED: Symbol = Symbol('UNDEFINED');
+	export type EventName<EventNameType = string> = EventNameType;
+	export type EventId = string;
+	export type EventIds = EventId[];
+	export type AffectedEventIds = (EventId | null)[];
+	export type AffectedEventId = EventId | null;
 
-	constructor(defaultChain: boolean = false) {
-		this.defaultChain = defaultChain;
+	export type EventNames<EventNameType = string> = EventName<EventNameType>[];
+
+	export type EventHandlers = Record<EventId, EventHandler>;
+	export type EventsList<EventNameType = string> = Map<EventName<EventNameType>, EventHandlers>;
+
+	export type EventCallback<T extends Function = Function> = T;
+
+	export type EmitResult<T> = Record<EventId, T>;
+
+	export type MappedEventsSet<EventNameType> = Set<EventName<EventNameType>>;
+	export type MappedEventsList<EventNameType> = MappedEventsSet<EventNameType> | null;
+	export type MappedEvents<EventNameType> = Map<Events<EventNameType>, MappedEventsList<EventNameType>>;
+
+	export type MiddlewareBeforeCallback<EventNameType> = (context: EventsMiddlewareBeforeContext<EventNameType>) => Promise<void>;
+	export type MiddlewareAfterCallback<EventNameType> = (context: EventsMiddlewareAfterContext<EventNameType>) => Promise<void>;
+	export type MiddlewaresList<MiddlewareCallbackType> = Map<number, MiddlewareCallbackType>;
+	export type MiddlewareMetadata = Record<string, unknown>;
+
+	export interface ConfigOptionable {
+		defaultChain?: boolean,
+		eventIdPrefix?: string,
+		eventIdMask?: string,
+		UNDEFINED?: Symbol
 	}
 
-	private getUID(): EventId {
-		return tools.UID(this.eventIdPrefix);
+	export interface Config extends ConfigOptionable {
+		defaultChain: boolean,
+		instanceIdPrefix: string,
+		instanceIdMask: string,
+		eventIdPrefix: string,
+		eventIdPrefixMW: string,
+		eventIdMask: string,
+		UNDEFINED: Symbol
 	}
 
-	/** Clear event's list */
-	clear() {
-		this.eventsList = {};
+	export interface States<EventNameType> {
+		instanceId: EventInstanceId,
+		events: EventsList<EventNameType>,
+		mappersBefore: MappedEvents<EventNameType>,
+		mappersAfter: MappedEvents<EventNameType>,
+		middlewaresBefore: MiddlewaresList<MiddlewareBeforeCallback<EventNameType>>,
+		middlewaresAfter: MiddlewaresList<MiddlewareAfterCallback<EventNameType>>
 	}
 
-	/** Reset all states */
-	reset() {
-		this.middlewares = [];
-		this.middlewaresAfter = [];
-		this.eventMappers = [];
-		this.eventMappersAfter = [];
+	export interface EmitStatesOptionable<EventNameType> {
+		skipMiddlewaresBefore?: boolean;
+		skipMiddlewaresAfter?: boolean;
+		skipMappingsBefore?: boolean;
+		skipMappingsAfter?: boolean;
+		context?: Function;
+		chainable?: boolean;
+		fromMapper?: boolean;
+	}
 
+	export interface EmitStates<EventNameType> extends EmitStatesOptionable<EventNameType> {
+		skipMiddlewaresBefore: boolean;
+		skipMiddlewaresAfter: boolean;
+		skipMappingsBefore: boolean;
+		skipMappingsAfter: boolean;
+		context: Function;
+		chainable: boolean;
+		fromMapper: boolean;
+		middlewareBeforeContext: EventsMiddlewareBeforeContext<EventNameType>,
+		middlewareAfterContext: EventsMiddlewareAfterContext<EventNameType>
+	}
+
+	export interface MiddlewareStates<EventNameType> {
+		context: Events<EventNameType>,
+		emitStates: Events.EmitStatesOptionable<EventNameType> | null,
+		eventName: EventName<EventNameType>,
+		metadata: MiddlewareMetadata,
+		rejected: boolean,
+		returnValue: undefined | unknown,
+		arguments: unknown[],
+		skipped: boolean
+	}
+
+}
+
+class EventsMiddlewareContextBasic<EventNameType> {
+	protected states: Events.MiddlewareStates<EventNameType>;
+
+	constructor(eventName: Events.EventName<EventNameType>, context: Events<EventNameType>, emitStates: Events.EmitStatesOptionable<EventNameType> | null, metadata: Events.MiddlewareMetadata) {
+		this.states = {
+			context,
+			eventName,
+			metadata,
+			emitStates,
+			skipped    : false,
+			rejected   : false,
+			returnValue: undefined,
+			arguments  : []
+		};
+	}
+
+	/** @description Get middleware config */
+	getStates(): Events.MiddlewareStates<EventNameType> {
+		return this.states;
+	}
+
+	/** @description Get event name */
+	getEventName(): Events.EventName<EventNameType> {
+		return this.states.eventName;
+	}
+
+	/** @description Get metadata */
+	getMetadata<T = unknown>(name: string): T {
+		return this.states.metadata[name] as T;
+	}
+
+	/** @description Set metadata */
+	setMetadata<T = unknown>(name: string, data: T): void {
+		this.states.metadata[name] = data;
+	}
+}
+
+export class EventsMiddlewareBeforeContext<EventNameType> extends EventsMiddlewareContextBasic<EventNameType> {
+	constructor(eventName: Events.EventName<EventNameType>, args: unknown[], context: Events<EventNameType>, emitStates: Events.EmitStatesOptionable<EventNameType> | null, metadata: Events.MiddlewareMetadata = {}) {
+		super(eventName, context, emitStates, metadata);
+		this.states.arguments = args;
+	}
+
+	/** @description Skip other middlewares */
+	skip(): void {
+		this.states.skipped = true;
+	}
+
+	/** @description Reject event flow */
+	reject<T = any>(returnValue: T): void {
+		this.states.rejected = true;
+		this.states.returnValue = returnValue;
+	}
+
+	/** @description Get arguments */
+	getArguments<T extends unknown[] = unknown[]>(): T {
+		return this.states.arguments as T;
+	}
+
+	/** @description Set arguments */
+	setArguments<T extends unknown[] = unknown[]>(args: T): void {
+		this.states.arguments = args;
+	}
+}
+
+export class EventsMiddlewareAfterContext<EventNameType> extends EventsMiddlewareContextBasic<EventNameType> {
+	constructor(eventName: Events.EventName<EventNameType>, context: Events<EventNameType>, emitConfig: Events.EmitStatesOptionable<EventNameType> | null, metadata: Events.MiddlewareMetadata = {}) {
+		super(eventName, context, emitConfig, metadata);
+	}
+
+	/** @description Get return value */
+	getReturn<T>(): T {
+		this.getStates();
+		return this.states.returnValue as T;
+	}
+
+	/** @description Set return value */
+	setReturn<T = unknown>(returnValue: T): void {
+		this.states.returnValue = returnValue;
+	}
+}
+
+export class Events<EventNameType = string | number | symbol> {
+	static UNDEFINED_description = 'EVENTS::UNDEFINED';
+	static UNDEFINED: Symbol = Symbol(Events.UNDEFINED_description);
+
+	private readonly config: Events.Config = {
+		defaultChain    : true,
+		eventIdPrefix   : '#',
+		eventIdPrefixMW : '@',
+		eventIdMask     : 'xxxxxxxxxxxxxxxxxx-xxxxxx',
+		instanceIdPrefix: '$',
+		instanceIdMask  : 'xxxxxxxxxxxxxxxxxx-xxxxxx',
+		UNDEFINED       : Events.UNDEFINED
+	};
+
+	private states: Events.States<EventNameType> = {
+		instanceId       : tools.UID(this.config.instanceIdPrefix, this.config.instanceIdMask),
+		events           : new Map(),
+		mappersBefore    : new Map(),
+		mappersAfter     : new Map(),
+		middlewaresBefore: new Map(),
+		middlewaresAfter : new Map()
+	};
+
+	constructor(config: Events.ConfigOptionable = {}) {
+		this.config = Object.assign(this.config, config);
+		this.reset();
+	}
+
+	private getEventId(): Events.EventId {
+		return tools.UID(this.config.eventIdPrefix, this.config.eventIdMask);
+	}
+
+	/** @description Clear event's list */
+	clear(): void {
+		this.states.events.clear();
+	}
+
+	/** @description Reset all states */
+	reset(): void {
 		this.clear();
+		this.states.mappersBefore.clear();
+		this.states.mappersAfter.clear();
+		this.states.middlewaresAfter.clear();
+		this.states.middlewaresBefore.clear();
 	}
 
-	/** Remove event by EventId or array of EventId */
-	off(targetId: EventName, onlyEventNames: boolean): AffectedEventIds | false
-	off(targetId: EventNames, onlyEventNames: boolean): AffectedEventIds | false
-	off(targetId: EventName | EventNames, onlyEventNames: boolean): AffectedEventIds | false
-	off(targetId: EventIds): AffectedEventIds | false
-	off(targetId: EventId): AffectedEventIds | false
-	off(targetId: EventIds | EventName | EventNames, onlyEventNames = false): AffectedEventIds | false {
-		const affectedEvents: AffectedEventIds = {};
+	/** @description Register event */
+	on<EventCallback extends Function = Function>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventCallback>): Events.EventId {
+		const id = this.getEventId();
 
-		tools.iterate<EventId | EventName>(tools.toArray(targetId), (id) => {
-			if (this.eventsList[id]) {
-				affectedEvents[id] = Object.keys(this.eventsList[id]);
-				delete this.eventsList[id];
+		const eventHandlers = (this.states.events.has(name) ? this.states.events.get(name) : {}) as Events.EventHandlers;
+		eventHandlers[id] = new EventHandler(cb, Date.now());
+		this.states.events.set(name, eventHandlers);
 
-				return;
-			}
-			if (onlyEventNames) {
-				affectedEvents[id] = false;
-				return;
-			}
+		return id;
+	}
 
-			let eventName: EventName = id.slice(0, this.getUID().length * -1);
-			const eventIds = this.eventsList[eventName];
-			if (!eventIds) {
-				affectedEvents[eventName] = false;
-				return;
-			}
+	/**  Register event and self-remove after first call */
+	once<T extends Function = Function>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<T>): Events.EventId {
+		const id = this.on(name, async (...args: unknown[]) => {
+			this.offById(id);
 
-			affectedEvents[eventName] = affectedEvents[eventName] || [];
-			(affectedEvents[eventName] as EventIds).push(id);
-
-			delete this.eventsList[eventName][id];
+			return cb(...args);
 		});
 
-		return affectedEvents;
+		return id;
 	}
 
-	/** Remove event by name */
-	offEvent(eventName: EventName | EventNames): AffectedEventIds | false {
-		return this.off(eventName, true);
+	/** Await event emit */
+	wait(name: Events.EventName<EventNameType>, timeout: number = -1): Promise<Array<unknown> | null> {
+		return new Promise((resolve) => {
+			const id = this.once(name, async (...args: unknown[]) => resolve(args));
+
+			if (timeout > 0) {
+				setTimeout(() => {
+					this.offById(id);
+
+					resolve(null);
+				}, timeout);
+			}
+		});
 	}
 
-	/** Add (prepend) 'before' middleware */
-	useFirst(handler: Function): number {
-		return this.middlewares.unshift(handler);
+	/** @description Remove event by EventId or array of EventId */
+	offById(targetId: Events.EventId | Events.EventIds): Events.AffectedEventId | Events.AffectedEventIds {
+		const _off = (currentId: Events.EventId) => {
+			let found = null;
+
+			tools.iterate([...this.states.events.values()], (eventHandlers, _, iter) => {
+				if (!eventHandlers[currentId]) return;
+
+				found = currentId;
+				delete eventHandlers[currentId];
+
+				iter.break();
+			});
+
+
+			return found;
+		};
+
+		if (tools.isArray(targetId)) {
+			return tools.iterate(targetId as Events.EventIds, (row) => _off(row), [] as Events.AffectedEventIds);
+		}
+
+		return _off(targetId as Events.EventId);
 	}
 
-	/** Add (append) 'before' middleware */
-	use(handler: Function): number {
-		return this.middlewares.push(handler);
+	/** @description Remove event by EventName */
+	off(name: Events.EventName<EventNameType>): Events.AffectedEventIds | null {
+		if (!this.states.events.has(name)) return null;
+
+		const affectedIds = Object.keys(this.states.events.get(name) as Events.EventHandlers);
+		this.states.events.delete(name);
+
+		return affectedIds;
 	}
 
-	/** Remove 'before' middleware by MiddlewareBefore id */
-	unUse(handlerPosition: number): void {
-		this.middlewares.splice(handlerPosition - 1, 1);
+	/** Get events names by RegExp pattern */
+	getEvents(findStr: string | RegExp | null = null): Events.EventNames<EventNameType> {
+		const eventsList = [...this.states.events.keys()];
+
+		if (findStr === null) return eventsList;
+
+		return tools.iterate(eventsList, (name) => {
+			if (!(name as unknown as string)?.toString()) return;
+
+			return (name as unknown as string).toString().match(tools.isRegExp(findStr) ? findStr as RegExp : new RegExp(`^${findStr}$`, 'gi')) ? name : undefined;
+		}, []) as Events.EventNames<EventNameType>;
 	}
 
-	/** Add (prepend) 'after' middleware */
-	useAfterFirst(handler: Function): number {
-		return this.middlewaresAfter.unshift(handler);
+	/** Add 'before' middleware */
+	useBefore(handler: Events.MiddlewareBeforeCallback<EventNameType>, position: number | null = null): number {
+		if (position === null) {
+			position = this.states.middlewaresBefore.size;
+		}
+
+		this.states.middlewaresBefore.set(position, handler);
+
+		return position;
 	}
 
-	/** Add (append) 'after' middleware */
-	useAfter(handler: Function): number {
-		return this.middlewaresAfter.push(handler);
+	/** Remove 'before' middleware by MiddlewareBefore position */
+	unUseBefore(handlerPosition: number): void {
+		this.states.middlewaresBefore.delete(handlerPosition);
+	}
+
+	/** Add  'after' middleware */
+	useAfter(handler: Events.MiddlewareAfterCallback<EventNameType>, position: number | null = null): number {
+		if (position === null) {
+			position = this.states.middlewaresAfter.size;
+		}
+
+		this.states.middlewaresAfter.set(position, handler);
+
+		return position;
 	}
 
 	/** Remove 'after' middleware by MiddlewareAfter id */
 	unUseAfter(handlerPosition: number): void {
-		this.middlewaresAfter.splice(handlerPosition - 1, 1);
+		this.states.middlewaresAfter.delete(handlerPosition);
 	}
 
-	/** Get events names list */
-	getEventsList(): EventNames {
-		return Object.keys(this.eventsList);
+	private mapEvents(source: Events.MappedEvents<EventNameType>, target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null) {
+		let mappers = source.get(target);
+
+		if (list === null) {
+			mappers = null;
+		} else {
+			if (!tools.isSet(mappers)) {
+				mappers = new Set();
+			}
+
+			tools.iterate(list, (row) => {
+				(mappers as Events.MappedEventsSet<EventNameType>).add(row);
+			});
+		}
+
+		source.set(target, mappers as Events.MappedEventsList<EventNameType>);
 	}
 
-	/** Get events names by RegExp pattern */
-	getEvents(findStr: string): EventName[] {
-		return tools.iterate(this.eventsList, (event, name) =>
-			name.match(new RegExp(`^${findStr}$`, 'gi')) ? name : undefined, []) as EventName[];
-	}
+	private unMap(source: Events.MappedEvents<EventNameType>, target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null): void {
+		if (list === null) {
+			if (source.has(target)) source.delete(target);
 
-	/** Map events 'before' */
-	mapEvents(target: Events, list: MapList = false): number {
-		return this.eventMappers.push({
-			list,
-			target
+			return;
+		}
+
+		let mappers = source.get(target);
+		if (!tools.isSet(mappers)) return;
+
+		tools.iterate(list, (row) => {
+			(mappers as Events.MappedEventsSet<EventNameType>).delete(row);
 		});
+
+		source.set(target, mappers as Events.MappedEventsSet<EventNameType>);
 	}
 
-	/** Remove 'before' event mapper by position */
-	unmapEvents(position: number): void {
-		this.eventMappers.splice(position - 1, 1);
+	/** Map events 'before' by list, or all if not defined */
+	mapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
+		this.mapEvents(this.states.mappersBefore, target, list);
 	}
 
-	/** Map events 'after' */
-	mapEventsAfter(target: Events, list: MapList = false): number {
-		return this.eventMappersAfter.push({
-			list,
-			target
-		});
+	/** Remove 'before' event mapper by list, or all if not defined */
+	unMapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
+		this.unMap(this.states.mappersBefore, target, list);
 	}
 
-	/** Remove 'after' event mapper by id */
-	unmapEventsAfter(position: number): void {
-		this.eventMappersAfter.splice(position - 1, 1);
+	/** Map events 'after' by list, or all if not defined */
+	mapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
+		this.mapEvents(this.states.mappersAfter, target, list);
+	}
+
+	/** Remove 'after' event mapper by list, or all if not defined */
+	unMapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
+		this.unMap(this.states.mappersAfter, target, list);
+	}
+
+	static isUndefined(val: unknown): boolean {
+		return val === Events.UNDEFINED;
+	}
+
+	isUndefined(val: unknown): boolean {
+		return val === this.config.UNDEFINED;
 	}
 
 	/** Check event exists */
-	exists(what: EventName | RegExp, inMappingsToo: boolean = false): boolean {
+	exists(what: Events.EventName<EventNameType> | RegExp, inMappingsToo: boolean = false): boolean {
 		let ret = false;
 
 		if (inMappingsToo) {
-			tools.iterate(this.eventMappers.concat(this.eventMappersAfter), (row: EventMapObject) => {
-				if (row.target.exists(what)) ret = true;
+			tools.iterate([...this.states.mappersBefore.keys(), ...this.states.mappersAfter.keys()], (mapping, _, iter) => {
+				ret = mapping.exists(what, true);
+
+				if (ret) iter.break();
 			});
-			if (ret) return ret;
+			if (ret) return true;
 		}
 
 		if (tools.isRegExp(what)) {
-			let out = false;
-			tools.iterate((this.getEventsList() as string[]), (eventName: string) => {
-				out = out || !!eventName.match(what);
-			});
-			return out;
+			return !!this.getEvents(what as RegExp).length;
 		}
 
-		return !!this.eventsList[what as string];
-	}
+		tools.iterate([...this.states.events.keys()], (eventName, _, iter) => {
+			if (eventName !== what as Events.EventName<EventNameType>) return;
 
-	/** Register event */
-	on(name: EventName, cb: EventCallback): EventId
-	on(name: EventNamesWithCallbacks): EventIds
-	on(name: EventName | EventNamesWithCallbacks, cb?: EventCallback): EventId | EventIds | false {
-		const _on = (event: EventName, eventCb: EventCallback) => {
-			let id = `${event}${this.getUID()}`;
-
-			this.eventsList[event] = this.eventsList[event] || {};
-			this.eventsList[event][id] = new EventInformation(eventCb, Date.now());
-
-			return id;
-		};
-
-		if (tools.isObject(name)) return tools.iterate(name as EventNamesWithCallbacks, (a, b) => _on(b, a), [] as EventIds);
-
-		return tools.isFunction(cb) ? _on(name as EventName, cb as EventCallback) : false;
-	}
-
-	/**  Register event and self-remove after first call */
-	once(name: EventNamesWithCallbacks): EventIds
-	once(name: EventName, cb: EventCallback): EventId
-	once(name: EventName | EventNamesWithCallbacks, cb?: EventCallback): EventId | EventIds | false {
-		const _once = (event: EventName, eventCb: EventCallback) => {
-			let id = this.on(event, async (...args: [any]) => {
-				this.off(id);
-
-				return eventCb(...args);
-			});
-
-			return id;
-		};
-
-		if (tools.isObject(name)) {
-			return tools.iterate(name as EventNamesWithCallbacks, (a, b) => _once(b, a), [] as EventIds);
-		}
-
-		return tools.isFunction(cb) ? _once(name as EventName, cb as EventCallback) : false;
-	}
-
-	/** Await event emit */
-	wait(name: EventName, cb: EventCallbackSpread | Boolean = false): Promise<Array<any | void>> {
-		return new Promise((resolve) => this.once(name, async (...args: Array<any>) => {
-			const ret = await (<EventCallbackSpread>cb || tools.nop$)(...args);
-			resolve(args);
-
-			return ret;
-		}));
-	}
-
-	/** Advanced event emit */
-	async emitEx(name: EventName, chainable: boolean, configParam: Config | false, ...args: any[]): Promise<Object | any> {
-		let promises: Array<Promise<[]>> = [];
-		let exitVal: any;
-		let ret: Object = {};
-		const config: Config = configParam ? configParam : {};
-
-		config.context = config.context || this;
-
-		const mapperFn = (list: Array<EventMapObject>) => tools.iterate(list, (mapperRow: EventMapObject) => {
-			if (tools.isFunction(mapperRow.target.emit)
-				&& (mapperRow.list === false || tools.arrayToObject(mapperRow.list)[name])
-			) {
-				promises.push(mapperRow.target.emitEx(name, false, {
-					context   : config.context,
-					preCall   : config.preCall,
-					fromMapper: true
-				}, ...args));
-			}
-		});
-
-		const mapperFnChain = async (list: Array<EventMapObject>) => {
-			await tools.iterate(list, async (mapperRow: EventMapObject) => {
-				if (tools.isFunction(mapperRow.target.emit)
-					&& (mapperRow.list === false || tools.arrayToObject(mapperRow.list)[name])
-				) {
-					Object.assign(ret, await mapperRow.target.emitEx(name, true, {
-						context   : config.context,
-						preCall   : config.preCall,
-						fromMapper: true
-					}, ...args));
-				}
-			});
-		};
-
-		Object.assign(config, {
-			ignore     : false,
-			ignoreFalse: false,
-			dontExit   : false
-		});
-
-		if (!config.ignore) {
-			await tools.iterate(this.middlewares, async (fn: Function) => {
-				if (!tools.isFunction(fn)) return;
-				const fnRet = await fn.apply(config.context, [name, config, ...args]);
-
-				if (tools.isArray(fnRet)) args = fnRet;
-				if (tools.isObject(fnRet)) exitVal = fnRet;
-			});
-		}
-
-		if (exitVal && !config.dontExit) return exitVal.ret;
-
-		await (chainable ? mapperFnChain : mapperFn)(this.eventMappers);
-		if (chainable) {
-			/** @ts-ignore */
-			await tools.iterate(this.eventsList[name], async (rec, id, iter: IIteration) => {
-				iter.key(id);
-
-				if (tools.isFunction(config.preCall) && typeof config.preCall === 'function') args = await config.preCall(rec.cb, args, id, config, this);
-
-				const res = await rec.cb.apply(config.context, args);
-				return tools.isUndefined(res) ? this.UNDEFINED : res;
-			}, ret);
-		} else {
-			await tools.iterate(this.eventsList[name], async (row, id) => {
-				if (config.preCall && tools.isFunction(config.preCall)) args = await config.preCall(row.cb, args, id, config, this);
-
-				return promises.push(row.cb.apply(config.context, args));
-			});
-			ret = await Promise.all(promises);
-			promises = [];
-		}
-
-		chainable ? await mapperFnChain(this.eventMappersAfter) : mapperFn(this.eventMappersAfter);
-
-		if (!chainable) {
-			ret = (ret as Array<any>).concat(await Promise.all(promises));
-		}
-
-		await tools.iterate(this.middlewaresAfter, async (fn: Function) => {
-			const fnRet = await fn.apply(config.context, [name, config, ret, ...args]);
-			if (!tools.isUndefined(fnRet)) ret = fnRet;
+			ret = true;
+			iter.break();
 		});
 
 		return ret;
 	}
 
+	private async processMappings<ReturnType>(target: Events.MappedEvents<EventNameType>, name: Events.EventName<EventNameType>, emitStates: Events.EmitStates<EventNameType>, ret: Events.EmitResult<ReturnType>) {
+		await tools.iterate(target, async (events, instance) => {
+			if (events !== null) {
+				if ([...events].indexOf(name) === -1) return;
+			}
+
+			const mapRets = await instance.emitEx(name, {
+				chainable            : emitStates.chainable,
+				context              : emitStates.context,
+				fromMapper           : true,
+				skipMiddlewaresBefore: true,
+				skipMiddlewaresAfter : true
+			}, emitStates.middlewareBeforeContext.getStates().arguments);
+
+			iterate(mapRets, (row, eventId) => {
+				ret[eventId] = row as ReturnType;
+			});
+		});
+	}
+
+	/** Advanced event emit */
+	async emitEx<ReturnType = unknown>(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
+		let ret: Events.EmitResult<ReturnType> = {};
+
+		const emitStates: Events.EmitStates<EventNameType> = Object.assign({
+			chainable              : this.config.defaultChain,
+			context                : this,
+			skipMappingsAfter      : false,
+			skipMappingsBefore     : false,
+			skipMiddlewaresAfter   : false,
+			skipMiddlewaresBefore  : false,
+			fromMapper             : false,
+			middlewareBeforeContext: new EventsMiddlewareBeforeContext<EventNameType>(name, args, this, states),
+			middlewareAfterContext : new EventsMiddlewareAfterContext<EventNameType>(name, this, states)
+		}, states);
+
+		const eventHandlers = this.states.events.get(name) as Events.EventHandlers;
+		if (!eventHandlers) return {};
+
+		if (!emitStates.skipMiddlewaresBefore) {
+			const idxs = [...this.states.middlewaresBefore.keys()].sort((a, b) => a - b);
+			let rejId: number = 0;
+
+			await tools.iterate(idxs, async (idx, _, iter) => {
+				const mw = this.states.middlewaresBefore.get(idx) as Events.MiddlewareBeforeCallback<EventNameType>;
+				await mw(emitStates.middlewareBeforeContext);
+
+				const {
+					      skipped,
+					      rejected
+				      } = emitStates.middlewareBeforeContext.getStates();
+				if (rejected || skipped) {
+					iter.break();
+					rejId = idx;
+				}
+			});
+
+			const {
+				      rejected,
+				      returnValue
+			      } = emitStates.middlewareBeforeContext.getStates();
+			if (rejected) {
+				const out: Events.EmitResult<unknown> = {};
+				out[`${this.config.eventIdPrefixMW}BEFORE-${this.states.instanceId}/${rejId}`] = returnValue;
+
+				return out as Events.EmitResult<ReturnType>;
+			}
+		}
+
+		if (!emitStates.skipMappingsBefore) {
+			await this.processMappings(this.states.mappersBefore, name, emitStates, ret);
+		}
+
+		const iterateHandlers = async (row: EventHandler, id: string, iter: tools.IIteration) => {
+			iter.key(id);
+
+			const res = await row.cb.apply(emitStates.context, emitStates.middlewareBeforeContext.getArguments());
+			return tools.isUndefined(res) ? this.config.UNDEFINED : res;
+		};
+
+		if (eventHandlers) {
+			if (emitStates.chainable) {
+				await tools.iterate(eventHandlers, iterateHandlers, ret);
+			} else {
+				await tools.iterateParallel(eventHandlers, iterateHandlers, ret);
+			}
+		}
+
+		if (!emitStates.skipMappingsAfter) {
+			await this.processMappings(this.states.mappersAfter, name, emitStates, ret);
+		}
+
+		emitStates.middlewareAfterContext.setReturn(ret);
+
+		if (!emitStates.skipMiddlewaresAfter) {
+			const idxs = [...this.states.middlewaresAfter.keys()].sort((a, b) => a - b);
+			let rejId: number = 0;
+
+			await tools.iterate(idxs, async (idx, _, iter) => {
+				const mw = this.states.middlewaresAfter.get(idx) as Events.MiddlewareAfterCallback<EventNameType>;
+				await mw(emitStates.middlewareAfterContext);
+
+				const {
+					      skipped,
+					      rejected
+				      } = emitStates.middlewareBeforeContext.getStates();
+				if (rejected || skipped) {
+					iter.break();
+					rejId = idx;
+				}
+			});
+
+			const {
+				      rejected,
+				      returnValue
+			      } = emitStates.middlewareBeforeContext.getStates();
+			if (rejected) {
+				const out: Events.EmitResult<unknown> = {};
+				out[`${this.config.eventIdPrefixMW}AFTER-${this.states.instanceId}/${rejId}`] = returnValue;
+
+				return out as Events.EmitResult<ReturnType>;
+			}
+		}
+
+		return emitStates.middlewareAfterContext.getReturn();
+	}
+
+	/** Event emit (call) and return first value */
+	async emitOnce<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<T | undefined> {
+		const rows = await this.emitEx<T>(name, null, ...args);
+
+		const rowsKeys = Object.keys(rows);
+		if (!rowsKeys.length) return;
+
+		return rows[rowsKeys[0]];
+	}
+
 	/** Event emit (call) */
-	async emit(name: EventName, ...args: any[]): ReturnAsyncEmitResult {
-		return this.defaultChain ? this.emitChain(name, ...args) : this.emitParallel(name, ...args);
+	async emit<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<T>> {
+		return this.config.defaultChain
+		       ? this.emitChain(name, ...args)
+		       : this.emitParallel(name, ...args);
 	}
 
 	/** Event emit (call) as parallel */
-	async emitParallel(name: EventName, ...args: any[]): ReturnAsyncEmitResult {
-		return this.emitEx(name, false, false, ...args);
+	async emitParallel<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<T>> {
+		return this.emitEx(name, {chainable: false}, ...args);
 	}
 
 	/** Event emit (call) as chain */
-	async emitChain(name: EventName, ...args: any[]): ReturnAsyncEmitResult {
-		return this.emitEx(name, true, false, ...args);
+	async emitChain<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<T>> {
+		return this.emitEx(name, {chainable: true}, ...args);
 	}
 }
 
-export * from './types';
-
 export default {
+	EventHandler,
+	EventsMiddlewareBeforeContext,
+	EventsMiddlewareAfterContext,
 	Events
 };
