@@ -1,6 +1,6 @@
 import * as tools from '@osmium/tools';
 
-class EventHandler {
+export class EventHandler {
 	public cb: Function;
 	public time: number;
 
@@ -237,7 +237,7 @@ export class Events<EventNameType = string | number | symbol> {
 		return id;
 	}
 
-	/**  Register event and self-remove after first call */
+	/** @description Register event and self-remove after first call */
 	once<T extends Function = Function>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<T>): Events.EventId {
 		const id = this.on(name, async (...args: unknown[]) => {
 			this.offById(id);
@@ -248,7 +248,7 @@ export class Events<EventNameType = string | number | symbol> {
 		return id;
 	}
 
-	/** Await event emit */
+	/** @description Await event emit */
 	wait(name: Events.EventName<EventNameType>, timeout: number = -1): Promise<Array<unknown> | null> {
 		return new Promise((resolve) => {
 			const id = this.once(name, async (...args: unknown[]) => resolve(args));
@@ -298,7 +298,7 @@ export class Events<EventNameType = string | number | symbol> {
 		return affectedIds;
 	}
 
-	/** Get events names by RegExp pattern */
+	/** @description Get events names by RegExp pattern */
 	getEvents(findStr: string | RegExp | null = null): Events.EventNames<EventNameType> {
 		const eventsList = [...this.states.events.keys()];
 
@@ -311,7 +311,7 @@ export class Events<EventNameType = string | number | symbol> {
 		}, []) as Events.EventNames<EventNameType>;
 	}
 
-	/** Add 'before' middleware */
+	/** @description Add 'before' middleware */
 	useBefore(handler: Events.MiddlewareBeforeCallback<EventNameType>, position: number | null = null): number {
 		if (position === null) {
 			position = this.states.middlewaresBefore.size;
@@ -322,12 +322,12 @@ export class Events<EventNameType = string | number | symbol> {
 		return position;
 	}
 
-	/** Remove 'before' middleware by MiddlewareBefore position */
+	/** @description Remove 'before' middleware by MiddlewareBefore position */
 	unUseBefore(handlerPosition: number): void {
 		this.states.middlewaresBefore.delete(handlerPosition);
 	}
 
-	/** Add  'after' middleware */
+	/** @description Add  'after' middleware */
 	useAfter(handler: Events.MiddlewareAfterCallback<EventNameType>, position: number | null = null): number {
 		if (position === null) {
 			position = this.states.middlewaresAfter.size;
@@ -338,7 +338,7 @@ export class Events<EventNameType = string | number | symbol> {
 		return position;
 	}
 
-	/** Remove 'after' middleware by MiddlewareAfter id */
+	/** @description Remove 'after' middleware by MiddlewareAfter id */
 	unUseAfter(handlerPosition: number): void {
 		this.states.middlewaresAfter.delete(handlerPosition);
 	}
@@ -378,22 +378,22 @@ export class Events<EventNameType = string | number | symbol> {
 		source.set(target, mappers as Events.MappedEventsSet<EventNameType>);
 	}
 
-	/** Map events 'before' by list, or all if not defined */
+	/** @description Map events 'before' by list, or all if not defined */
 	mapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
 		this.mapEvents(this.states.mappersBefore, target, list);
 	}
 
-	/** Remove 'before' event mapper by list, or all if not defined */
+	/** @description Remove 'before' event mapper by list, or all if not defined */
 	unMapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
 		this.unMap(this.states.mappersBefore, target, list);
 	}
 
-	/** Map events 'after' by list, or all if not defined */
+	/** @description Map events 'after' by list, or all if not defined */
 	mapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
 		this.mapEvents(this.states.mappersAfter, target, list);
 	}
 
-	/** Remove 'after' event mapper by list, or all if not defined */
+	/** @description Remove 'after' event mapper by list, or all if not defined */
 	unMapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
 		this.unMap(this.states.mappersAfter, target, list);
 	}
@@ -406,7 +406,7 @@ export class Events<EventNameType = string | number | symbol> {
 		return val === this.config.UNDEFINED;
 	}
 
-	/** Check event exists */
+	/** @description Check event exists */
 	exists(what: Events.EventName<EventNameType> | RegExp, inMappingsToo: boolean = false): boolean {
 		let ret = false;
 
@@ -453,7 +453,47 @@ export class Events<EventNameType = string | number | symbol> {
 		});
 	}
 
-	/** Advanced event emit */
+	private async emitExMiddlewaresBefore<ReturnType>(emitStates: Events.EmitStates<EventNameType>): Promise<Events.MiddlewareStates<EventNameType>> {
+		const idxs = [...this.states.middlewaresBefore.keys()].sort((a, b) => a - b);
+
+		await tools.iterate(idxs, async (idx, _, iter) => {
+			const mw = this.states.middlewaresBefore.get(idx) as Events.MiddlewareBeforeCallback<EventNameType>;
+			await mw(emitStates.middlewareBeforeContext);
+
+			const {
+				      skipped,
+				      rejected: mwRejected
+			      } = emitStates.middlewareBeforeContext.getStates();
+
+			if (mwRejected || skipped) {
+				iter.break();
+			}
+		});
+
+		return emitStates.middlewareBeforeContext.getStates();
+	}
+
+	private async emitExMiddlewaresAfter<ReturnType>(emitStates: Events.EmitStates<EventNameType>): Promise<Events.MiddlewareStates<EventNameType>> {
+		const idxs = [...this.states.middlewaresAfter.keys()].sort((a, b) => a - b);
+
+		await tools.iterate(idxs, async (idx, _, iter) => {
+			const mw = this.states.middlewaresAfter.get(idx) as Events.MiddlewareAfterCallback<EventNameType>;
+			await mw(emitStates.middlewareAfterContext);
+
+			const {
+				      skipped,
+				      rejected: mwRejected
+			      } = emitStates.middlewareBeforeContext.getStates();
+
+			if (mwRejected || skipped) {
+				iter.break();
+			}
+		});
+
+		return emitStates.middlewareBeforeContext.getStates();
+	}
+
+	/** @description Advanced event emit */
 	async emitEx<ReturnType = unknown>(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
 		let ret: Events.EmitResult<ReturnType> = {};
 
@@ -472,32 +512,12 @@ export class Events<EventNameType = string | number | symbol> {
 		const eventHandlers = this.states.events.get(name) as Events.EventHandlers;
 
 		if (!emitStates.skipMiddlewaresBefore) {
-			const idxs = [...this.states.middlewaresBefore.keys()].sort((a, b) => a - b);
-			let rejId: number = 0;
-
-			await tools.iterate(idxs, async (idx, _, iter) => {
-				const mw = this.states.middlewaresBefore.get(idx) as Events.MiddlewareBeforeCallback<EventNameType>;
-				await mw(emitStates.middlewareBeforeContext);
-
-				const {
-					      skipped,
-					      rejected
-				      } = emitStates.middlewareBeforeContext.getStates();
-				if (rejected || skipped) {
-					iter.break();
-					rejId = idx;
-				}
-			});
-
 			const {
 				      rejected,
 				      returnValue
-			      } = emitStates.middlewareBeforeContext.getStates();
+			      } = await this.emitExMiddlewaresBefore<ReturnType>(emitStates);
 			if (rejected) {
-				const out: Events.EmitResult<unknown> = {};
-				out[`${this.config.eventIdPrefixMW}BEFORE-${this.states.instanceId}/${rejId}`] = returnValue;
-
-				return out as Events.EmitResult<ReturnType>;
+				return returnValue as Events.EmitResult<ReturnType>;
 			}
 		}
 
@@ -527,39 +547,19 @@ export class Events<EventNameType = string | number | symbol> {
 		emitStates.middlewareAfterContext.setReturn(ret);
 
 		if (!emitStates.skipMiddlewaresAfter) {
-			const idxs = [...this.states.middlewaresAfter.keys()].sort((a, b) => a - b);
-			let rejId: number = 0;
-
-			await tools.iterate(idxs, async (idx, _, iter) => {
-				const mw = this.states.middlewaresAfter.get(idx) as Events.MiddlewareAfterCallback<EventNameType>;
-				await mw(emitStates.middlewareAfterContext);
-
-				const {
-					      skipped,
-					      rejected
-				      } = emitStates.middlewareBeforeContext.getStates();
-				if (rejected || skipped) {
-					iter.break();
-					rejId = idx;
-				}
-			});
-
 			const {
 				      rejected,
 				      returnValue
-			      } = emitStates.middlewareBeforeContext.getStates();
+			      } = await this.emitExMiddlewaresAfter(emitStates);
 			if (rejected) {
-				const out: Events.EmitResult<unknown> = {};
-				out[`${this.config.eventIdPrefixMW}AFTER-${this.states.instanceId}/${rejId}`] = returnValue;
-
-				return out as Events.EmitResult<ReturnType>;
+				return returnValue as Events.EmitResult<ReturnType>;
 			}
 		}
 
 		return emitStates.middlewareAfterContext.getReturn();
 	}
 
-	/** Event emit (call) and return first value */
+	/** @description Event emit (call) and return first value */
 	async emitOnce<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<T | undefined> {
 		const rows = await this.emitEx<T>(name, null, ...args);
 
@@ -569,19 +569,19 @@ export class Events<EventNameType = string | number | symbol> {
 		return rows[rowsKeys[0]];
 	}
 
-	/** Event emit (call) */
+	/** @description Event emit (call) */
 	async emit<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<T>> {
 		return this.config.defaultChain
 		       ? this.emitChain(name, ...args)
 		       : this.emitParallel(name, ...args);
 	}
 
-	/** Event emit (call) as parallel */
+	/** @description Event emit (call) as parallel */
 	async emitParallel<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<T>> {
 		return this.emitEx(name, {chainable: false}, ...args);
 	}
 
-	/** Event emit (call) as chain */
+	/** @description Event emit (call) as chain */
 	async emitChain<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<T>> {
 		return this.emitEx(name, {chainable: true}, ...args);
 	}
