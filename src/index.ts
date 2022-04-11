@@ -1,4 +1,3 @@
-import {iterate} from '@osmium/tools';
 import * as tools from '@osmium/tools';
 
 class EventHandler {
@@ -448,7 +447,7 @@ export class Events<EventNameType = string | number | symbol> {
 				skipMiddlewaresAfter : true
 			}, emitStates.middlewareBeforeContext.getStates().arguments);
 
-			iterate(mapRets, (row, eventId) => {
+			tools.iterate(mapRets, (row, eventId) => {
 				ret[eventId] = row as ReturnType;
 			});
 		});
