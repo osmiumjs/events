@@ -6,7 +6,7 @@ import {Events as EventsFull} from '../';
 import {Events as EventsMin} from '../dist/index.min.js';
 
 function doTests(Events: EventsFull | EventsMin, title: string) {
-	const event = new Events();
+	const event: EventsFull = new Events();
 
 	describe(`==== Test for "${title}" version ====`, () => {
 		describe(`${title}::Events::On`, () => {
@@ -18,8 +18,8 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			});
 
 			it('should emit the event and return callback return value', async () => {
-				const emitResult = await event.emit('default event', 20);
-				expect(emitResult[0]).to.equal(20);
+				const emitResult = await event.emitOnce('default event', 20);
+				expect(emitResult).to.equal(20);
 			});
 		});
 
@@ -32,8 +32,8 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			});
 
 			it('should emit once the event and return value', async () => {
-				const emitResult = await event.emit('expirable event', 20);
-				expect(emitResult[0]).to.equal(20);
+				const emitResult = await event.emitOnce('expirable event', 20);
+				expect(emitResult).to.equal(20);
 			});
 
 			it('should not emit the event after', async () => {
@@ -53,7 +53,7 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			});
 
 			it('should disable event by name', async () => {
-				event.offEvent(disabledNameEventId.split('#')[0]);
+				event.off(disabledNameEventId.split('#')[0]);
 
 				const emitResult = await event.emit('disabled by name event', 40);
 				assert(emitResult[0] === undefined);
@@ -87,7 +87,8 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			});
 
 			it('should register append middleware "before"', async () => {
-				middlewaresId.firstTest = event.use(async () => {
+				middlewaresId.firstTest = event.useBefore(async (ctx) => {
+					ctx.setArguments([param]);
 					param += 10;
 				});
 
@@ -99,7 +100,7 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			it('should disable middlware', async () => {
 				param = 10;
 
-				event.unUse(middlewaresId.firstTest);
+				event.unUseBefore(middlewaresId.firstTest);
 				await event.emit('test middleware');
 
 				assert(param === 20);
@@ -110,13 +111,13 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			it('should register prepend middleware "before"', async () => {
 				let registered: boolean = false;
 
-				middlewaresId.secondTest = event.use(async () => {
+				middlewaresId.secondTest = event.useBefore(async () => {
 					registered ? param = 100 : param += 10;
 				});
 
-				middlewaresId.thirdTest = event.useFirst(async () => {
+				middlewaresId.thirdTest = event.useBefore(async () => {
 					registered = true;
-				});
+				}, -1000);
 
 				await event.emit('test middleware');
 
@@ -126,8 +127,8 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			it('should disable prepend middlwares "before"', async () => {
 				param = 10;
 
-				event.unUse(middlewaresId.thirdTest);
-				event.unUse(middlewaresId.secondTest);
+				event.unUseBefore(middlewaresId.thirdTest);
+				event.unUseBefore(middlewaresId.secondTest);
 
 				await event.emit('test middleware');
 
@@ -167,9 +168,9 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 					registered ? param = 100 : param += 10;
 				});
 
-				middlewaresId.thirdTestAfter = event.useAfterFirst(async () => {
+				middlewaresId.thirdTestAfter = event.useAfter(async () => {
 					registered = true;
-				});
+				}, -1000);
 
 				await event.emit('test middleware');
 
@@ -190,7 +191,7 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 
 		describe(`${title}::Events::Display`, () => {
 			it('should return event\'s names list', () => {
-				const listNames = event.getEventsList();
+				const listNames = event.getEvents();
 				assert(listNames.length === 4);
 			});
 
@@ -209,31 +210,6 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			it('should return false for definitely not existing event', async () => {
 				const listNames = event.exists('definitely not existing event');
 				assert(listNames === false);
-			});
-		});
-
-		describe(`${title}::Events::Chain`, async () => {
-			const chain = new Events();
-
-			let flag: string = 'nchd';
-
-			chain.on('chain', async () => {
-				await new Promise<void>(resolve => {
-					setTimeout(() => resolve(), 200);
-				});
-				flag = 'chnd';
-			});
-
-			chain.on('chain', async () => {
-				await new Promise<void>(resolve => {
-					setTimeout(() => resolve(), 100);
-				});
-				!(flag === 'true') ? flag = 'wrng' : false;
-			});
-
-			it('should execute first event declatation, then the second', async function () {
-				await chain.emit('chain');
-				assert(flag === 'chnd', 'For some reason default chain is not synchronously');
 			});
 		});
 
@@ -259,8 +235,8 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 				flag = true;
 			});
 
-			const mapId = linkingEvent.mapEventsAfter(linkedEventAfter);
-			const mapIdAfter = linkingEvent.mapEvents(linkedEvent);
+			linkingEvent.mapEventsAfter(linkedEventAfter);
+			linkingEvent.mapEventsBefore(linkedEvent);
 
 			it('should relate one-way event instance', async () => {
 				await linkingEvent.emit('same event');
@@ -280,7 +256,7 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 				type = 'removal';
 				advancedFlag = '';
 
-				linkingEvent.unmapEvents(mapId);
+				linkingEvent.unMapEventsBefore(linkedEvent);
 				await linkingEvent.emit('same event');
 				assert(advancedFlag !== 'nnpd', 'Event was not unmapped');
 			});
@@ -290,7 +266,7 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 				type = 'removalAfter';
 				advancedFlag = '';
 
-				linkingEvent.unmapEventsAfter(mapIdAfter);
+				linkingEvent.unMapEventsAfter(linkedEventAfter);
 				await linkingEvent.emit('same event');
 				assert(advancedFlag !== 'nnpd', 'Event "after" was not unmapped');
 			});

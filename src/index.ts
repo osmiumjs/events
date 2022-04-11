@@ -471,7 +471,6 @@ export class Events<EventNameType = string | number | symbol> {
 		}, states);
 
 		const eventHandlers = this.states.events.get(name) as Events.EventHandlers;
-		if (!eventHandlers) return {};
 
 		if (!emitStates.skipMiddlewaresBefore) {
 			const idxs = [...this.states.middlewaresBefore.keys()].sort((a, b) => a - b);
