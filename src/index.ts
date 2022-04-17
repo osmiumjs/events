@@ -494,12 +494,8 @@ export class Events<EventNameType = string | number | symbol> {
 		return emitStates.middlewareBeforeContext.getStates();
 	}
 
-	/** @description Advanced event emit */
-	async emitEx<ReturnType = unknown>(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
-		let ret: Events.EmitResult<ReturnType> = {};
-		const metadata: Events.MiddlewareMetadata = {};
-
-		const emitStates: Events.EmitStates<EventNameType> = Object.assign({
+	private getEmitExDefaultStates(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, args: unknown[], metadata: Events.MiddlewareMetadata): Events.EmitStates<EventNameType> {
+		return Object.assign({
 			chainable              : this.config.defaultChain,
 			context                : this,
 			skipMappingsAfter      : false,
@@ -511,6 +507,31 @@ export class Events<EventNameType = string | number | symbol> {
 			middlewareBeforeContext: new EventsMiddlewareBeforeContext<EventNameType>(name, args, this, states, metadata),
 			middlewareAfterContext : new EventsMiddlewareAfterContext<EventNameType>(name, this, states, metadata)
 		}, states);
+	}
+
+	private async emitExProcessHandlers<ReturnType>(emitStates: Events.EmitStates<EventNameType>, eventHandlers: Events.EventHandlers, ret: Events.EmitResult<ReturnType>) {
+		const iterateHandlers = async (row: EventHandler, id: string, iter: tools.IIteration) => {
+			iter.key(id);
+
+			const res = await row.cb.apply(emitStates.context, emitStates.middlewareBeforeContext.getArguments());
+			return tools.isUndefined(res) ? this.config.UNDEFINED : res;
+		};
+
+		if (emitStates.chainable) {
+			await tools.iterate(eventHandlers, iterateHandlers, ret);
+		} else {
+			await tools.iterateParallel(eventHandlers, iterateHandlers, ret);
+		}
+	}
+
+	/** @description Advanced event emit */
+	async emitEx<ReturnType = unknown>(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
+		let ret: Events.EmitResult<ReturnType> = {};
+
+		const metadata: Events.MiddlewareMetadata = states?.metadata || {};
+		if (states?.metadata) delete states.metadata;
+
+		const emitStates: Events.EmitStates<EventNameType> = this.getEmitExDefaultStates(name, states, args, metadata);
 
 		const eventHandlers = this.states.events.get(name) as Events.EventHandlers;
 
@@ -528,19 +549,8 @@ export class Events<EventNameType = string | number | symbol> {
 			await this.processMappings(this.states.mappersBefore, name, emitStates, ret);
 		}
 
-		const iterateHandlers = async (row: EventHandler, id: string, iter: tools.IIteration) => {
-			iter.key(id);
-
-			const res = await row.cb.apply(emitStates.context, emitStates.middlewareBeforeContext.getArguments());
-			return tools.isUndefined(res) ? this.config.UNDEFINED : res;
-		};
-
 		if (eventHandlers) {
-			if (emitStates.chainable) {
-				await tools.iterate(eventHandlers, iterateHandlers, ret);
-			} else {
-				await tools.iterateParallel(eventHandlers, iterateHandlers, ret);
-			}
+			await this.emitExProcessHandlers<ReturnType>(emitStates, eventHandlers, ret);
 		}
 
 		if (!emitStates.skipMappingsAfter) {
