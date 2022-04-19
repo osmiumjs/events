@@ -24,7 +24,7 @@ export namespace Events {
 	export type EventHandlers = Record<EventId, EventHandler>;
 	export type EventsList<EventNameType = string> = Map<EventName<EventNameType>, EventHandlers>;
 
-	export type EventCallback<T extends Function = Function> = T;
+	export type EventCallback<EventNameType, ArgsType extends any[] = any[], ReturnType = void> = (this: Events.EmitStates<EventNameType>, ...args: ArgsType) => ReturnType;
 
 	export type EmitResult<T> = Record<EventId, T>;
 
@@ -228,7 +228,7 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	/** @description Register event */
-	on<EventCallback extends Function = Function>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventCallback>): Events.EventId {
+	on(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType>): Events.EventId {
 		const id = this.getEventId();
 
 		const eventHandlers = (this.states.events.has(name) ? this.states.events.get(name) : {}) as Events.EventHandlers;
@@ -239,11 +239,12 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	/** @description Register event and self-remove after first call */
-	once<T extends Function = Function>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<T>): Events.EventId {
-		const id = this.on(name, async (...args: unknown[]) => {
-			this.offById(id);
+	once(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType>): Events.EventId {
+		const self = this;
+		const id = this.on(name, function (...args: unknown[]) {
+			self.offById(id);
 
-			return cb(...args);
+			return cb.apply(this, args);
 		});
 
 		return id;
@@ -503,7 +504,7 @@ export class Events<EventNameType = string | number | symbol> {
 			skipMiddlewaresAfter   : false,
 			skipMiddlewaresBefore  : false,
 			fromMapper             : false,
-			metadata               : {},
+			metadata               : metadata,
 			middlewareBeforeContext: new EventsMiddlewareBeforeContext<EventNameType>(name, args, this, states, metadata),
 			middlewareAfterContext : new EventsMiddlewareAfterContext<EventNameType>(name, this, states, metadata)
 		}, states);
@@ -513,7 +514,7 @@ export class Events<EventNameType = string | number | symbol> {
 		const iterateHandlers = async (row: EventHandler, id: string, iter: tools.IIteration) => {
 			iter.key(id);
 
-			const res = await row.cb.apply(emitStates.context, emitStates.middlewareBeforeContext.getArguments());
+			const res = await row.cb.apply(emitStates, emitStates.middlewareBeforeContext.getArguments());
 			return tools.isUndefined(res) ? this.config.UNDEFINED : res;
 		};
 
