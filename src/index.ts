@@ -24,7 +24,7 @@ export namespace Events {
 	export type EventHandlers = Record<EventId, EventHandler>;
 	export type EventsList<EventNameType = string> = Map<EventName<EventNameType>, EventHandlers>;
 
-	export type EventCallback<EventNameType, ArgsType extends any[] = any[], ReturnType = void> = (this: Events.EmitStates<EventNameType>, ...args: ArgsType) => ReturnType;
+	export type EventCallback<EventNameType, ArgsType extends any[] = any[], ReturnType = void> = (this: Events.EmitStates<EventNameType>, ...args: ArgsType) => ReturnType | Promise<ReturnType>;
 
 	export type EmitResult<T> = Record<EventId, T>;
 
@@ -228,7 +228,7 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	/** @description Register event */
-	on(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType>): Events.EventId {
+	on<ArgsType extends any[] = any[], ReturnType = any>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType>): Events.EventId {
 		const id = this.getEventId();
 
 		const eventHandlers = (this.states.events.has(name) ? this.states.events.get(name) : {}) as Events.EventHandlers;
@@ -239,9 +239,9 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	/** @description Register event and self-remove after first call */
-	once(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType>): Events.EventId {
+	once<ArgsType extends any[] = any[], ReturnType = any>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType>): Events.EventId {
 		const self = this;
-		const id = this.on(name, function (...args: unknown[]) {
+		const id = this.on(name, function (...args: ArgsType) {
 			self.offById(id);
 
 			return cb.apply(this, args);
@@ -584,19 +584,19 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	/** @description Event emit (call) */
-	async emit<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<T>> {
+	async emit<ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
 		return this.config.defaultChain
 		       ? this.emitChain(name, ...args)
 		       : this.emitParallel(name, ...args);
 	}
 
 	/** @description Event emit (call) as parallel */
-	async emitParallel<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<T>> {
+	async emitParallel<ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
 		return this.emitEx(name, {chainable: false}, ...args);
 	}
 
 	/** @description Event emit (call) as chain */
-	async emitChain<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<T>> {
+	async emitChain<ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
 		return this.emitEx(name, {chainable: true}, ...args);
 	}
 }
