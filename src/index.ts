@@ -526,7 +526,7 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	/** @description Advanced event emit */
-	async emitEx<ReturnType = unknown>(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
+	async emitEx<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
 		let ret: Events.EmitResult<ReturnType> = {};
 
 		const metadata: Events.MiddlewareMetadata = states?.metadata || {};
@@ -574,8 +574,8 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	/** @description Event emit (call) and return first value */
-	async emitOnce<T = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<T | undefined> {
-		const rows = await this.emitEx<T>(name, null, ...args);
+	async emitOnce<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<ReturnType | undefined> {
+		const rows = await this.emitEx<ArgsType, ReturnType>(name, null, ...args);
 
 		const rowsKeys = Object.keys(rows);
 		if (!rowsKeys.length) return;
@@ -584,20 +584,20 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	/** @description Event emit (call) */
-	async emit<ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
+	async emit<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
 		return this.config.defaultChain
-		       ? this.emitChain(name, ...args)
-		       : this.emitParallel(name, ...args);
+		       ? this.emitChain<ArgsType, ReturnType>(name, ...args)
+		       : this.emitParallel<ArgsType, ReturnType>(name, ...args);
 	}
 
 	/** @description Event emit (call) as parallel */
-	async emitParallel<ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
-		return this.emitEx(name, {chainable: false}, ...args);
+	async emitParallel<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
+		return this.emitEx<ArgsType, ReturnType>(name, {chainable: false}, ...args);
 	}
 
 	/** @description Event emit (call) as chain */
-	async emitChain<ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: unknown[]): Promise<Events.EmitResult<ReturnType>> {
-		return this.emitEx(name, {chainable: true}, ...args);
+	async emitChain<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
+		return this.emitEx<ArgsType, ReturnType>(name, {chainable: true}, ...args);
 	}
 }
 
