@@ -134,6 +134,12 @@ class EventsMiddlewareContextBasic<EventNameType> {
 	setMetadata<T = unknown>(name: string, data: T): void {
 		this.states.metadata[name] = data;
 	}
+
+	/** @description Reject event flow */
+	reject<T = any>(returnValue: T): void {
+		this.states.rejected = true;
+		this.states.returnValue = returnValue;
+	}
 }
 
 export class EventsMiddlewareBeforeContext<EventNameType> extends EventsMiddlewareContextBasic<EventNameType> {
@@ -145,12 +151,6 @@ export class EventsMiddlewareBeforeContext<EventNameType> extends EventsMiddlewa
 	/** @description Skip other middlewares */
 	skip(): void {
 		this.states.skipped = true;
-	}
-
-	/** @description Reject event flow */
-	reject<T = any>(returnValue: T): void {
-		this.states.rejected = true;
-		this.states.returnValue = returnValue;
 	}
 
 	/** @description Get arguments */
@@ -170,9 +170,8 @@ export class EventsMiddlewareAfterContext<EventNameType> extends EventsMiddlewar
 	}
 
 	/** @description Get return value */
-	getReturn<T>(): T {
-		this.getStates();
-		return this.states.returnValue as T;
+	getReturn<T = unknown>(): Events.EmitResult<T> {
+		return this.states.returnValue as Events.EmitResult<T>;
 	}
 
 	/** @description Set return value */
@@ -485,14 +484,14 @@ export class Events<EventNameType = string | number | symbol> {
 			const {
 				      skipped,
 				      rejected: mwRejected
-			      } = emitStates.middlewareBeforeContext.getStates();
+			      } = emitStates.middlewareAfterContext.getStates();
 
 			if (mwRejected || skipped) {
 				iter.break();
 			}
 		});
 
-		return emitStates.middlewareBeforeContext.getStates();
+		return emitStates.middlewareAfterContext.getStates();
 	}
 
 	private getEmitExDefaultStates(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, args: unknown[], metadata: Events.MiddlewareMetadata): Events.EmitStates<EventNameType> {
