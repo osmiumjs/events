@@ -447,7 +447,7 @@ export class Events<EventNameType = string | number | symbol> {
 				fromMapper           : true,
 				skipMiddlewaresBefore: true,
 				skipMiddlewaresAfter : true
-			}, emitStates.middlewareBeforeContext.getStates().arguments);
+			}, ...emitStates.middlewareBeforeContext.getStates().arguments);
 
 			tools.iterate(mapRets, (row, eventId) => {
 				ret[eventId] = row as ReturnType;
