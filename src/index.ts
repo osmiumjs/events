@@ -540,6 +540,8 @@ export class Events<EventNameType = string | number | symbol> {
 	async emitEx<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
 		let ret: Events.EmitResult<ReturnType> = {};
 
+		states = states || {};
+
 		const metadata: Events.MiddlewareMetadata = states?.metadata || {};
 		if (states?.metadata) delete states.metadata;
 
