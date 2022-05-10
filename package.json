@@ -1,7 +1,7 @@
 {
 	"name"           : "@osmium/events",
 	"description"    : "Events library",
-	"version"        : "0.6.8",
+	"version"        : "0.7.0",
 	"license"        : "MIT",
 	"author"         : {
 		"name" : "Vasiliy Isaichkin",
@@ -20,7 +20,7 @@
 		"prepublishOnly": "npm run build"
 	},
 	"dependencies"   : {
-		"@osmium/tools": "0.6.4"
+		"@osmium/tools": "0.6.5"
 	},
 	"devDependencies": {
 		"@types/chai" : "^4.3.1",

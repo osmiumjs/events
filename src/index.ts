@@ -41,7 +41,6 @@ export namespace Events {
 		defaultChain?: boolean,
 		eventIdPrefix?: string,
 		eventIdMask?: string,
-		UNDEFINED?: Symbol
 	}
 
 	export interface Config extends ConfigOptionable {
@@ -51,7 +50,6 @@ export namespace Events {
 		eventIdPrefix: string;
 		eventIdPrefixMW: string;
 		eventIdMask: string;
-		UNDEFINED: Symbol;
 	}
 
 	export interface States<EventNameType> {
@@ -72,6 +70,8 @@ export namespace Events {
 		chainable?: boolean;
 		fromMapper?: boolean;
 		metadata?: Events.MiddlewareMetadata;
+		middlewareBeforeContext?: EventsMiddlewareBeforeContext<EventNameType>;
+		middlewareAfterContext?: EventsMiddlewareAfterContext<EventNameType>;
 	}
 
 	export interface EmitStates<EventNameType> extends EmitStatesOptionable<EventNameType> {
@@ -96,6 +96,11 @@ export namespace Events {
 		returnValue: undefined | unknown;
 		arguments: unknown[];
 		skipped: boolean;
+	}
+
+	export type ProcessMappingsResult = {
+		rejected: boolean;
+		returnValue: undefined | unknown;
 	}
 }
 
@@ -181,17 +186,13 @@ export class EventsMiddlewareAfterContext<EventNameType> extends EventsMiddlewar
 }
 
 export class Events<EventNameType = string | number | symbol> {
-	static UNDEFINED_description = 'EVENTS::UNDEFINED';
-	static UNDEFINED: Symbol = Symbol(Events.UNDEFINED_description);
-
 	private readonly config: Events.Config = {
 		defaultChain    : true,
 		eventIdPrefix   : '#',
 		eventIdPrefixMW : '@',
 		eventIdMask     : 'xxxxxxxxxxxxxxxxxx-xxxxxx',
 		instanceIdPrefix: '$',
-		instanceIdMask  : 'xxxxxxxxxxxxxxxxxx-xxxxxx',
-		UNDEFINED       : Events.UNDEFINED
+		instanceIdMask  : 'xxxxxxxxxxxxxxxxxx-xxxxxx'
 	};
 
 	private states: Events.States<EventNameType> = {
@@ -399,14 +400,6 @@ export class Events<EventNameType = string | number | symbol> {
 		this.unMap(this.states.mappersAfter, target, list);
 	}
 
-	static isUndefined(val: unknown): boolean {
-		return val === Events.UNDEFINED;
-	}
-
-	isUndefined(val: unknown): boolean {
-		return val === this.config.UNDEFINED;
-	}
-
 	/** @description Check event exists */
 	exists(what: Events.EventName<EventNameType> | RegExp, inMappingsToo: boolean = false): boolean {
 		let ret = false;
@@ -434,24 +427,45 @@ export class Events<EventNameType = string | number | symbol> {
 		return ret;
 	}
 
-	private async processMappings<ReturnType>(target: Events.MappedEvents<EventNameType>, name: Events.EventName<EventNameType>, emitStates: Events.EmitStates<EventNameType>, ret: Events.EmitResult<ReturnType>) {
-		await tools.iterate(target, async (events, instance) => {
+	private async processMappings<ReturnType>(target: Events.MappedEvents<EventNameType>, name: Events.EventName<EventNameType>, emitStates: Events.EmitStates<EventNameType>, ret: Events.EmitResult<ReturnType>, isAfter: boolean): Promise<Events.ProcessMappingsResult | null> {
+		let out: Events.ProcessMappingsResult | null = null;
+
+		await tools.iterate(target, async (events, instance, iter) => {
 			if (events !== null) {
 				if ([...events].indexOf(name) === -1) return;
 			}
 
-			const mapRets = await instance.emitEx(name, {
-				chainable            : emitStates.chainable,
-				context              : emitStates.context,
-				fromMapper           : true,
-				skipMiddlewaresBefore: true,
-				skipMiddlewaresAfter : true
-			}, ...emitStates.middlewareBeforeContext.getStates().arguments);
+			const states = {
+				metadata          : emitStates.metadata,
+				chainable         : emitStates.chainable,
+				context           : emitStates.context,
+				fromMapper        : true,
+				skipMappingsBefore: true,
+				skipMappingsAfter : true
+			} as Events.EmitStatesOptionable<EventNameType>;
+			const mapRets = await instance.emitEx(name, states, ...emitStates.middlewareBeforeContext.getStates().arguments);
+
+			const mwStates: Events.MiddlewareStates<EventNameType> | undefined =
+				      isAfter
+				      ? states?.middlewareAfterContext?.getStates()
+				      : states?.middlewareBeforeContext?.getStates();
+			if (mwStates?.rejected) {
+				out = {
+					rejected   : true,
+					returnValue: mwStates.returnValue
+				};
+
+				iter.break();
+				return;
+			}
+			console.log();
 
 			tools.iterate(mapRets, (row, eventId) => {
 				ret[eventId] = row as ReturnType;
 			});
 		});
+
+		return out;
 	}
 
 	private async emitExMiddlewaresBefore<ReturnType>(emitStates: Events.EmitStates<EventNameType>): Promise<Events.MiddlewareStates<EventNameType>> {
@@ -495,7 +509,7 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	private getEmitExDefaultStates(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType> | null, args: unknown[], metadata: Events.MiddlewareMetadata): Events.EmitStates<EventNameType> {
-		return Object.assign({
+		return Object.assign(states, {
 			chainable              : this.config.defaultChain,
 			context                : this,
 			skipMappingsAfter      : false,
@@ -512,15 +526,13 @@ export class Events<EventNameType = string | number | symbol> {
 	private async emitExProcessHandlers<ReturnType>(emitStates: Events.EmitStates<EventNameType>, eventHandlers: Events.EventHandlers, ret: Events.EmitResult<ReturnType>) {
 		const iterateHandlers = async (row: EventHandler, id: string, iter: tools.IIteration) => {
 			iter.key(id);
-
-			const res = await row.cb.apply(emitStates, emitStates.middlewareBeforeContext.getArguments());
-			return tools.isUndefined(res) ? this.config.UNDEFINED : res;
+			ret[id] = await row.cb.apply(emitStates, emitStates.middlewareBeforeContext.getArguments());
 		};
 
 		if (emitStates.chainable) {
-			await tools.iterate(eventHandlers, iterateHandlers, ret);
+			await tools.iterate(eventHandlers, iterateHandlers);
 		} else {
-			await tools.iterateParallel(eventHandlers, iterateHandlers, ret);
+			await tools.iterateParallel(eventHandlers, iterateHandlers);
 		}
 	}
 
@@ -535,6 +547,11 @@ export class Events<EventNameType = string | number | symbol> {
 
 		const eventHandlers = this.states.events.get(name) as Events.EventHandlers;
 
+		if (!emitStates.skipMappingsBefore) {
+			const res = await this.processMappings(this.states.mappersBefore, name, emitStates, ret, false);
+			if (res && res?.rejected) return res.returnValue as Events.EmitResult<ReturnType>;
+		}
+
 		if (!emitStates.skipMiddlewaresBefore) {
 			const {
 				      rejected,
@@ -545,19 +562,16 @@ export class Events<EventNameType = string | number | symbol> {
 			}
 		}
 
-		if (!emitStates.skipMappingsBefore) {
-			await this.processMappings(this.states.mappersBefore, name, emitStates, ret);
-		}
-
 		if (eventHandlers) {
 			await this.emitExProcessHandlers<ReturnType>(emitStates, eventHandlers, ret);
 		}
 
-		if (!emitStates.skipMappingsAfter) {
-			await this.processMappings(this.states.mappersAfter, name, emitStates, ret);
-		}
-
 		emitStates.middlewareAfterContext.setReturn(ret);
+
+		if (!emitStates.skipMappingsAfter) {
+			const res = await this.processMappings(this.states.mappersAfter, name, emitStates, ret, true);
+			if (res && res?.rejected) return res.returnValue as Events.EmitResult<ReturnType>;
+		}
 
 		if (!emitStates.skipMiddlewaresAfter) {
 			const {
