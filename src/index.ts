@@ -458,7 +458,6 @@ export class Events<EventNameType = string | number | symbol> {
 				iter.break();
 				return;
 			}
-			console.log();
 
 			tools.iterate(mapRets, (row, eventId) => {
 				ret[eventId] = row as ReturnType;
