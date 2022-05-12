@@ -68,9 +68,10 @@ export namespace Events {
 		skipMiddlewaresAfter?: boolean;
 		skipMappingsBefore?: boolean;
 		skipMappingsAfter?: boolean;
-		context?: Function;
+		context?: Function | Events<EventNameType, EmitStatesExtType>;
 		chainable?: boolean;
 		fromMapper?: boolean;
+		sourceMapper?: Events<EventNameType, EmitStatesExtType> | null,
 		metadata?: Events.MiddlewareMetadata;
 		middlewareBeforeContext?: EventsMiddlewareBeforeContext<EventNameType, EmitStatesExtType>;
 		middlewareAfterContext?: EventsMiddlewareAfterContext<EventNameType, EmitStatesExtType>;
@@ -83,7 +84,8 @@ export namespace Events {
 		skipMiddlewaresAfter: boolean;
 		skipMappingsBefore: boolean;
 		skipMappingsAfter: boolean;
-		context: Function;
+		context: Function | Events<EventNameType, EmitStatesExtType>;
+		sourceMapper: Events<EventNameType, EmitStatesExtType> | null,
 		chainable: boolean;
 		fromMapper: boolean;
 		metadata: Events.MiddlewareMetadata;
@@ -349,7 +351,7 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 	}
 
 	/** @description Register event and self-remove after first call */
-	once<ArgsType extends any[] = any[], ReturnType = any>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType>): Events.EventId {
+	once<ArgsType extends any[] = any[], ReturnType = any>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType, EmitStatesExtType>): Events.EventId {
 		const self = this;
 		const id = this.on(name, function (...args: ArgsType) {
 			self.offById(id);
@@ -510,17 +512,17 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 		let out: Events.ProcessMappingsResult | null = null;
 
 		await tools.iterate(target, async (events, instance, iter) => {
+			if (instance === emitStates.context) return;
+
 			if (events !== null) {
 				if ([...events].indexOf(name) === -1) return;
 			}
 
 			const states = {
-				metadata          : emitStates.metadata,
-				chainable         : emitStates.chainable,
-				context           : emitStates.context,
-				fromMapper        : true,
-				skipMappingsBefore: true,
-				skipMappingsAfter : true
+				metadata  : emitStates.metadata,
+				chainable : emitStates.chainable,
+				context   : emitStates.context,
+				fromMapper: true
 			} as Events.EmitStatesOptionable<EventNameType, EmitStatesExtType>;
 			const mapRets = await instance.emitEx(name, states, ...emitStates.middlewareBeforeContext.getStates().arguments);
 
@@ -587,7 +589,7 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 	}
 
 	private getEmitExDefaultStates(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType, EmitStatesExtType> | null, args: unknown[], metadata: Events.MiddlewareMetadata): Events.EmitStates<EventNameType, EmitStatesExtType> {
-		return Object.assign(states, {
+		const outStates = Object.assign({
 			chainable              : this.config.defaultChain,
 			context                : this,
 			skipMappingsAfter      : false,
@@ -597,8 +599,11 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 			fromMapper             : false,
 			metadata               : metadata,
 			middlewareBeforeContext: new EventsMiddlewareBeforeContext<EventNameType, EmitStatesExtType>(name, args, this, states, metadata),
-			middlewareAfterContext : new EventsMiddlewareAfterContext<EventNameType, EmitStatesExtType>(name, this, states, metadata)
+			middlewareAfterContext : new EventsMiddlewareAfterContext<EventNameType, EmitStatesExtType>(name, this, states, metadata),
+			sourceMapper           : this
 		}, states) as unknown as Events.EmitStates<EventNameType, EmitStatesExtType>;
+
+		return Object.assign(states, outStates);
 	}
 
 	private async emitExProcessHandlers<ReturnType>(emitStates: Events.EmitStates<EventNameType, EmitStatesExtType>, eventHandlers: Events.EventHandlers, ret: Events.EmitResult<ReturnType>) {
