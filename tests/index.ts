@@ -2,6 +2,7 @@ import {expect, assert} from 'chai';
 import 'mocha';
 
 import {Events as EventsFull} from '../';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import {Events as EventsMin} from '../dist/index.min.js';
 
@@ -53,7 +54,7 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			});
 
 			it('should disable event by name', async () => {
-				event.off(disabledNameEventId.split('#')[0]);
+				event.off(disabledNameEventId);
 
 				const emitResult = await event.emit('disabled by name event', 40);
 				assert(emitResult[0] === undefined);
@@ -79,7 +80,7 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 		});
 
 		describe(`${title}::Events::Middleware`, () => {
-			let middlewaresId: { [index: string]: number } = {};
+			let middlewaresId: {[index: string]: number} = {};
 			let param: number = 10;
 
 			event.on('test middleware', () => {
@@ -112,7 +113,7 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 				let registered: boolean = false;
 
 				middlewaresId.secondTest = event.useBefore(async () => {
-					registered ? param = 100 : param += 10;
+					registered ? (param = 100) : (param += 10);
 				});
 
 				middlewaresId.thirdTest = event.useBefore(async () => {
@@ -135,14 +136,13 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 				assert(param === 20, `${param} is not matching excpected value`);
 			});
 
-
 			//
 
 			it('should append middleware "after"', async () => {
 				param = 10;
 
 				middlewaresId.firstTestAfter = event.useAfter(async () => {
-					param === 20 ? param = 100 : param += 10;
+					param === 20 ? (param = 100) : (param += 10);
 				});
 
 				await event.emit('test middleware');
@@ -159,13 +159,12 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 				assert(param === 20);
 			});
 
-
 			it('should prepend middleware "after"', async () => {
 				param = 10;
 				let registered: boolean = false;
 
 				middlewaresId.secondTestAfter = event.useAfter(async () => {
-					registered ? param = 100 : param += 10;
+					registered ? (param = 100) : (param += 10);
 				});
 
 				middlewaresId.thirdTestAfter = event.useAfter(async () => {
@@ -190,9 +189,9 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 		});
 
 		describe(`${title}::Events::Display`, () => {
-			it('should return event\'s names list', () => {
+			it('should return events names list', () => {
 				const listNames = event.getEvents();
-				assert(listNames.length === 4);
+				assert(listNames.length === 3);
 			});
 
 			it('should return events by string', async () => {
@@ -222,7 +221,9 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 			let flag: boolean = false;
 			let advancedFlag: string = 'dflt';
 
-			linkingEvent.on('same event', () => {});
+			linkingEvent.on('same event', () => {
+				//
+			});
 
 			linkedEventAfter.on('same event', () => {
 				if (type === 'after' && advancedFlag === 'dflt') advancedFlag = 'wrng';
@@ -243,14 +244,12 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 				assert(flag === true, 'Events was not linked');
 			});
 
-
 			it('should relate one-way event instance appendingly', async () => {
 				type = 'after';
 
 				await linkingEvent.emit('same event');
 				assert(advancedFlag === 'chgd', 'Event that must have occured after, emitted earlier');
 			});
-
 
 			it('should unmap event', async () => {
 				type = 'removal';
@@ -260,7 +259,6 @@ function doTests(Events: EventsFull | EventsMin, title: string) {
 				await linkingEvent.emit('same event');
 				assert(advancedFlag !== 'nnpd', 'Event was not unmapped');
 			});
-
 
 			it('should unmap "after" event', async () => {
 				type = 'removalAfter';

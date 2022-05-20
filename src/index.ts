@@ -24,24 +24,30 @@ export namespace Events {
 	export type EventHandlers = Record<EventId, EventHandler>;
 	export type EventsList<EventNameType = string> = Map<EventName<EventNameType>, EventHandlers>;
 
-	export type EventCallback<EventNameType, ArgsType extends any[] = any[], ReturnType = void, EmitStatesExtType extends object = {}> = (this: Events.EmitStates<EventNameType, EmitStatesExtType>, ...args: ArgsType) => ReturnType | Promise<ReturnType>;
+	export type EventCallback<EventNameType, ArgsType extends any[] = any[], ReturnType = void, EmitStatesExt extends object = {}> = (
+		this: Events.EmitStates<EventNameType> & EmitStatesExt,
+		...args: ArgsType
+	) => ReturnType | Promise<ReturnType>;
 
 	export type EmitResult<T> = Record<EventId, T>;
 
 	export type MappedEventsSet<EventNameType> = Set<EventName<EventNameType>>;
 	export type MappedEventsList<EventNameType> = MappedEventsSet<EventNameType> | null;
-	export type MappedEvents<EventNameType, EmitStatesExtType extends object> = Map<Events<EventNameType, EmitStatesExtType>, MappedEventsList<EventNameType>>;
+	export type MappedEvents<EventNameType> = Map<Events<EventNameType>, MappedEventsList<EventNameType>>;
 
-	export type MiddlewareBeforeCallback<EventNameType, EmitStatesExtType extends object> = (context: EventsMiddlewareBeforeContext<EventNameType, EmitStatesExtType>) => Promise<void>;
-	export type MiddlewareAfterCallback<EventNameType, EmitStatesExtType extends object> = (context: EventsMiddlewareAfterContext<EventNameType, EmitStatesExtType>) => Promise<void>;
+	export type MiddlewareBeforeCallback<EventNameType> = (context: EventsMiddlewareBeforeContext<EventNameType>) => Promise<void>;
+	export type MiddlewareAfterCallback<EventNameType> = (context: EventsMiddlewareAfterContext<EventNameType>) => Promise<void>;
 	export type MiddlewaresList<MiddlewareCallbackType> = Map<number, MiddlewareCallbackType>;
 	export type MiddlewareMetadata = Record<string, unknown>;
 
 	export interface ConfigOptionable {
-		metadata?: MiddlewareMetadata | null;
-		defaultChain?: boolean,
-		eventIdPrefix?: string,
-		eventIdMask?: string,
+		metadata?: MiddlewareMetadata;
+		defaultChain?: boolean;
+		instanceIdPrefix?: string;
+		instanceIdMask?: string;
+		eventIdPrefix?: string;
+		eventIdPrefixMW?: string;
+		eventIdMask?: string;
 	}
 
 	export interface Config extends ConfigOptionable {
@@ -54,50 +60,52 @@ export namespace Events {
 		eventIdMask: string;
 	}
 
-	export interface States<EventNameType, EmitStatesExtType extends object> {
+	export interface States<EventNameType> {
 		instanceId: EventInstanceId;
 		events: EventsList<EventNameType>;
-		mappersBefore: MappedEvents<EventNameType, EmitStatesExtType>;
-		mappersAfter: MappedEvents<EventNameType, EmitStatesExtType>;
-		middlewaresBefore: MiddlewaresList<MiddlewareBeforeCallback<EventNameType, EmitStatesExtType>>;
-		middlewaresAfter: MiddlewaresList<MiddlewareAfterCallback<EventNameType, EmitStatesExtType>>;
+		mappersBefore: MappedEvents<EventNameType>;
+		mappersAfter: MappedEvents<EventNameType>;
+		middlewaresBefore: MiddlewaresList<MiddlewareBeforeCallback<EventNameType>>;
+		middlewaresAfter: MiddlewaresList<MiddlewareAfterCallback<EventNameType>>;
 	}
 
-	export interface IEmitStatesOptionable<EventNameType, EmitStatesExtType extends object> {
+	export interface IEmitStatesOptionable<EventNameType> {
 		skipMiddlewaresBefore?: boolean;
 		skipMiddlewaresAfter?: boolean;
 		skipMappingsBefore?: boolean;
 		skipMappingsAfter?: boolean;
-		context?: Function | Events<EventNameType, EmitStatesExtType>;
+		context?: Function | Events<EventNameType>;
 		chainable?: boolean;
 		fromMapper?: boolean;
-		sourceMapper?: Events<EventNameType, EmitStatesExtType> | null,
+		sourceMapper?: Events<EventNameType> | null;
 		metadata?: Events.MiddlewareMetadata;
-		middlewareBeforeContext?: EventsMiddlewareBeforeContext<EventNameType, EmitStatesExtType>;
-		middlewareAfterContext?: EventsMiddlewareAfterContext<EventNameType, EmitStatesExtType>;
+		middlewareBeforeContext?: EventsMiddlewareBeforeContext<EventNameType>;
+		middlewareAfterContext?: EventsMiddlewareAfterContext<EventNameType>;
+		reject?: boolean;
 	}
 
-	export type EmitStatesOptionable<EventNameType, EmitStatesExtType extends object> = IEmitStatesOptionable<EventNameType, EmitStatesExtType> & EmitStatesExtType;
+	export type EmitStatesOptionable<EventNameType> = IEmitStatesOptionable<EventNameType>;
 
-	export interface IEmitStates<EventNameType, EmitStatesExtType extends object> {
+	export interface IEmitStates<EventNameType> {
 		skipMiddlewaresBefore: boolean;
 		skipMiddlewaresAfter: boolean;
 		skipMappingsBefore: boolean;
 		skipMappingsAfter: boolean;
-		context: Function | Events<EventNameType, EmitStatesExtType>;
-		sourceMapper: Events<EventNameType, EmitStatesExtType> | null,
+		context: Function | Events<EventNameType>;
+		sourceMapper: Events<EventNameType> | null;
 		chainable: boolean;
 		fromMapper: boolean;
 		metadata: Events.MiddlewareMetadata;
-		middlewareBeforeContext: EventsMiddlewareBeforeContext<EventNameType, EmitStatesExtType>;
-		middlewareAfterContext: EventsMiddlewareAfterContext<EventNameType, EmitStatesExtType>;
+		middlewareBeforeContext: EventsMiddlewareBeforeContext<EventNameType>;
+		middlewareAfterContext: EventsMiddlewareAfterContext<EventNameType>;
+		reject: boolean;
 	}
 
-	export type EmitStates<EventNameType, EmitStatesExtType extends object> = IEmitStates<EventNameType, EmitStatesExtType> & EmitStatesExtType;
+	export type EmitStates<EventNameType> = IEmitStates<EventNameType>;
 
-	export interface MiddlewareStates<EventNameType, EmitStatesExtType extends object> {
-		context: Events<EventNameType, EmitStatesExtType>;
-		emitStates: Events.EmitStatesOptionable<EventNameType, EmitStatesExtType> | null;
+	export interface MiddlewareStates<EventNameType> {
+		context: Events<EventNameType>;
+		emitStates: Events.EmitStatesOptionable<EventNameType> | null;
 		eventName: EventName<EventNameType>;
 		metadata: MiddlewareMetadata;
 		rejected: boolean;
@@ -109,27 +117,44 @@ export namespace Events {
 	export type ProcessMappingsResult = {
 		rejected: boolean;
 		returnValue: undefined | unknown;
-	}
+	};
 }
 
-class EventsMiddlewareContextBasic<EventNameType, EmitStatesExtType extends object> {
-	protected states: Events.MiddlewareStates<EventNameType, EmitStatesExtType>;
+const eventsConfigDefault = {
+	metadata: {},
+	defaultChain: true,
+	eventIdPrefix: '#',
+	eventIdPrefixMW: '@',
+	eventIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx',
+	instanceIdPrefix: '$',
+	instanceIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx'
+};
 
-	constructor(eventName: Events.EventName<EventNameType>, context: Events<EventNameType, EmitStatesExtType>, emitStates: Events.EmitStatesOptionable<EventNameType, EmitStatesExtType> | null, metadata: Events.MiddlewareMetadata) {
+type EventNameTypeDefault = string | number | symbol;
+
+class EventsMiddlewareContextBasic<EventNameType> {
+	protected states: Events.MiddlewareStates<EventNameType>;
+
+	constructor(
+		eventName: Events.EventName<EventNameType>,
+		context: Events<EventNameType>,
+		emitStates: Events.EmitStatesOptionable<EventNameType> | null,
+		metadata: Events.MiddlewareMetadata
+	) {
 		this.states = {
 			context,
 			eventName,
 			metadata,
 			emitStates,
-			skipped    : false,
-			rejected   : false,
+			skipped: false,
+			rejected: false,
 			returnValue: undefined,
-			arguments  : []
+			arguments: []
 		};
 	}
 
 	/** @description Get middleware config */
-	getStates(): Events.MiddlewareStates<EventNameType, EmitStatesExtType> {
+	getStates(): Events.MiddlewareStates<EventNameType> {
 		return this.states;
 	}
 
@@ -139,24 +164,34 @@ class EventsMiddlewareContextBasic<EventNameType, EmitStatesExtType extends obje
 	}
 
 	/** @description Get metadata */
-	getMetadata<T = unknown>(name: string): T {
-		return this.states.metadata[name] as T;
+	getMetadata<ValueType = unknown>(name: string): ValueType {
+		return this.states.metadata[name] as ValueType;
 	}
 
 	/** @description Set metadata */
-	setMetadata<T = unknown>(name: string, data: T): void {
-		this.states.metadata[name] = data;
+	setMetadata<ValueType = unknown>(name: string, value: ValueType): void {
+		this.states.metadata[name] = value;
+	}
+
+	setEmitStates<ValueType = unknown>(key: string, value: ValueType) {
+		(this.states.emitStates as any)[key] = value;
 	}
 
 	/** @description Reject event flow */
-	reject<T = any>(returnValue: T): void {
+	reject<ReturnValueType = any>(returnValue: ReturnValueType): void {
 		this.states.rejected = true;
 		this.states.returnValue = returnValue;
 	}
 }
 
-export class EventsMiddlewareBeforeContext<EventNameType, EmitStatesExtType extends object> extends EventsMiddlewareContextBasic<EventNameType, EmitStatesExtType> {
-	constructor(eventName: Events.EventName<EventNameType>, args: unknown[], context: Events<EventNameType, EmitStatesExtType>, emitStates: Events.EmitStatesOptionable<EventNameType, EmitStatesExtType> | null, metadata: Events.MiddlewareMetadata) {
+export class EventsMiddlewareBeforeContext<EventNameType> extends EventsMiddlewareContextBasic<EventNameType> {
+	constructor(
+		eventName: Events.EventName<EventNameType>,
+		args: unknown[],
+		context: Events<EventNameType>,
+		emitStates: Events.EmitStatesOptionable<EventNameType> | null,
+		metadata: Events.MiddlewareMetadata
+	) {
 		super(eventName, context, emitStates, metadata);
 		this.states.arguments = args;
 	}
@@ -167,54 +202,47 @@ export class EventsMiddlewareBeforeContext<EventNameType, EmitStatesExtType exte
 	}
 
 	/** @description Get arguments */
-	getArguments<T extends unknown[] = unknown[]>(): T {
-		return this.states.arguments as T;
+	getArguments<ArgumentsType extends unknown[] = unknown[]>(): ArgumentsType {
+		return this.states.arguments as ArgumentsType;
 	}
 
 	/** @description Set arguments */
-	setArguments<T extends unknown[] = unknown[]>(args: T): void {
+	setArguments<ArgumentsType extends unknown[] = unknown[]>(args: ArgumentsType): void {
 		this.states.arguments = args;
 	}
 }
 
-export class EventsMiddlewareAfterContext<EventNameType, EmitStatesExtType extends object> extends EventsMiddlewareContextBasic<EventNameType, EmitStatesExtType> {
-	constructor(eventName: Events.EventName<EventNameType>, context: Events<EventNameType, EmitStatesExtType>, emitConfig: Events.EmitStatesOptionable<EventNameType, EmitStatesExtType> | null, metadata: Events.MiddlewareMetadata) {
+export class EventsMiddlewareAfterContext<EventNameType> extends EventsMiddlewareContextBasic<EventNameType> {
+	constructor(
+		eventName: Events.EventName<EventNameType>,
+		context: Events<EventNameType>,
+		emitConfig: Events.EmitStatesOptionable<EventNameType> | null,
+		metadata: Events.MiddlewareMetadata
+	) {
 		super(eventName, context, emitConfig, metadata);
 	}
 
 	/** @description Get return value */
-	getReturn<T = unknown>(): Events.EmitResult<T> {
-		return this.states.returnValue as Events.EmitResult<T>;
+	getReturn<ReturnValueType = unknown>(): Events.EmitResult<ReturnValueType> {
+		return this.states.returnValue as Events.EmitResult<ReturnValueType>;
 	}
 
 	/** @description Set return value */
-	setReturn<T = unknown>(returnValue: T): void {
+	setReturn<ReturnValueType = unknown>(returnValue: ReturnValueType): void {
 		this.states.returnValue = returnValue;
 	}
 }
 
-const eventsConfigDefault = {
-	metadata        : {},
-	defaultChain    : true,
-	eventIdPrefix   : '#',
-	eventIdPrefixMW : '@',
-	eventIdMask     : 'xxxxxxxxxxxxxxxxxx-xxxxxx',
-	instanceIdPrefix: '$',
-	instanceIdMask  : 'xxxxxxxxxxxxxxxxxx-xxxxxx'
-};
-
-type EventNameTypeDefault = string | number | symbol;
-
-export class EventsEmit<EventNameType = EventNameTypeDefault, EmitStatesExtType extends object = {}> {
+export class EventsEmit<EventNameType = EventNameTypeDefault> {
 	private readonly config: Events.Config = eventsConfigDefault;
-	private mapEmitOnce: Events<EventNameType, EmitStatesExtType> | null;
-	private instance: Events<EventNameType, EmitStatesExtType>;
+	private mapEmitOnce: Events<EventNameType> | null;
+	private instance: Events<EventNameType>;
 
-	constructor(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType, EmitStatesExtType> | null = null) {
+	constructor(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null) {
 		Object.assign(this.config, config);
 
 		this.mapEmitOnce = mapEmitOnce;
-		this.instance = new Events<EventNameType, EmitStatesExtType>(config, mapEmitOnce);
+		this.instance = new Events<EventNameType>(config, mapEmitOnce);
 	}
 
 	/** @description Event emit (call) and return first value */
@@ -238,29 +266,33 @@ export class EventsEmit<EventNameType = EventNameTypeDefault, EmitStatesExtType 
 	}
 
 	/** @description Advanced event emit */
-	async emitEx<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType, EmitStatesExtType> | null, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
+	async emitEx<ArgsType extends any[] = any[], ReturnType = unknown>(
+		name: Events.EventName<EventNameType>,
+		states: Events.EmitStatesOptionable<EventNameType> | null,
+		...args: ArgsType
+	): Promise<Events.EmitResult<ReturnType>> {
 		return this.instance.emitEx<ArgsType, ReturnType>(name, states, ...args);
 	}
 }
 
-export class Events<EventNameType = string | number | symbol, EmitStatesExtType extends object = {}> {
+export class Events<EventNameType = string | number | symbol> {
 	//#region Properties
 	private readonly config: Events.Config = eventsConfigDefault;
 
-	private states: Events.States<EventNameType, EmitStatesExtType> = {
-		instanceId       : tools.UID(this.config.instanceIdPrefix, this.config.instanceIdMask),
-		events           : new Map(),
-		mappersBefore    : new Map(),
-		mappersAfter     : new Map(),
+	states: Events.States<EventNameType> = {
+		instanceId: tools.UID(this.config.instanceIdPrefix, this.config.instanceIdMask),
+		events: new Map(),
+		mappersBefore: new Map(),
+		mappersAfter: new Map(),
 		middlewaresBefore: new Map(),
-		middlewaresAfter : new Map()
+		middlewaresAfter: new Map()
 	};
 
-	private mapEmitOnce: Events<EventNameType, EmitStatesExtType> | null;
+	private mapEmitOnce: Events<EventNameType> | null;
 	//#endregion
 
 	//#region Constructor
-	constructor(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType, EmitStatesExtType> | null = null) {
+	constructor(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null) {
 		this.config = Object.assign(config, this.config, config);
 		this.reset();
 
@@ -302,11 +334,15 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 
 		if (findStr === null) return eventsList;
 
-		return tools.iterate(eventsList, (name) => {
-			if (!(name as unknown as string)?.toString()) return;
+		return tools.iterate(
+			eventsList,
+			(name) => {
+				if (!(name as unknown as string)?.toString()) return;
 
-			return (name as unknown as string).toString().match(tools.isRegExp(findStr) ? findStr as RegExp : new RegExp(`^${findStr}$`, 'gi')) ? name : undefined;
-		}, []) as Events.EventNames<EventNameType>;
+				return (name as unknown as string).toString().match(tools.isRegExp(findStr) ? (findStr as RegExp) : new RegExp(`^${findStr}$`, 'gi')) ? name : undefined;
+			},
+			[]
+		) as Events.EventNames<EventNameType>;
 	}
 
 	/** @description Check event exists */
@@ -327,7 +363,7 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 		}
 
 		tools.iterate([...this.states.events.keys()], (eventName, _, iter) => {
-			if (eventName !== what as Events.EventName<EventNameType>) return;
+			if (eventName !== (what as Events.EventName<EventNameType>)) return;
 
 			ret = true;
 			iter.break();
@@ -340,7 +376,10 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 
 	//#region On/off-like
 	/** @description Register event */
-	on<ArgsType extends any[] = any[], ReturnType = any>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType, EmitStatesExtType>): Events.EventId {
+	on<ArgsType extends any[] = any[], ReturnType = any, ThisExtType extends object = {}>(
+		name: Events.EventName<EventNameType>,
+		cb: Events.EventCallback<EventNameType, ArgsType, ReturnType, ThisExtType>
+	): Events.EventId {
 		const id = this.getEventId();
 
 		const eventHandlers = (this.states.events.has(name) ? this.states.events.get(name) : {}) as Events.EventHandlers;
@@ -351,9 +390,12 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 	}
 
 	/** @description Register event and self-remove after first call */
-	once<ArgsType extends any[] = any[], ReturnType = any>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType, EmitStatesExtType>): Events.EventId {
+	once<ArgsType extends any[] = any[], ReturnType = any, ThisExtType extends object = {}>(
+		name: Events.EventName<EventNameType>,
+		cb: Events.EventCallback<EventNameType, ArgsType, ReturnType, ThisExtType>
+	): Events.EventId {
 		const self = this;
-		const id = this.on(name, function (...args: ArgsType) {
+		const id = this.on<ArgsType, ReturnType, ThisExtType>(name, function (...args: ArgsType) {
 			self.offById(id);
 
 			return cb.apply(this, args);
@@ -382,15 +424,17 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 		const _off = (currentId: Events.EventId) => {
 			let found = null;
 
-			tools.iterate([...this.states.events.values()], (eventHandlers, _, iter) => {
+			tools.iterate(this.states.events, (eventHandlers, eventName, iter) => {
 				if (!eventHandlers[currentId]) return;
-
 				found = currentId;
 				delete eventHandlers[currentId];
 
+				if (!Object.keys(eventHandlers).length) {
+					this.states.events.delete(eventName);
+				}
+
 				iter.break();
 			});
-
 
 			return found;
 		};
@@ -416,7 +460,7 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 
 	//#region Middlewares
 	/** @description Add 'before' middleware */
-	useBefore(handler: Events.MiddlewareBeforeCallback<EventNameType, EmitStatesExtType>, position: number | null = null): number {
+	useBefore(handler: Events.MiddlewareBeforeCallback<EventNameType>, position: number | null = null): number {
 		if (position === null) {
 			position = this.states.middlewaresBefore.size;
 		}
@@ -431,8 +475,8 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 		this.states.middlewaresBefore.delete(handlerPosition);
 	}
 
-	/** @description Add  'after' middleware */
-	useAfter(handler: Events.MiddlewareAfterCallback<EventNameType, EmitStatesExtType>, position: number | null = null): number {
+	/** @description Add 'after' middleware */
+	useAfter(handler: Events.MiddlewareAfterCallback<EventNameType>, position: number | null = null): number {
 		if (position === null) {
 			position = this.states.middlewaresAfter.size;
 		}
@@ -450,7 +494,7 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 	//#endregion
 
 	//#region Mappers
-	private mapEvents(source: Events.MappedEvents<EventNameType, EmitStatesExtType>, target: Events<EventNameType, EmitStatesExtType>, list: Events.EventNames<EventNameType> | null) {
+	private mapEvents(source: Events.MappedEvents<EventNameType>, target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null) {
 		let mappers = source.get(target);
 
 		if (list === null) {
@@ -468,7 +512,7 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 		source.set(target, mappers as Events.MappedEventsList<EventNameType>);
 	}
 
-	private unMap(source: Events.MappedEvents<EventNameType, EmitStatesExtType>, target: Events<EventNameType, EmitStatesExtType>, list: Events.EventNames<EventNameType> | null): void {
+	private unMap(source: Events.MappedEvents<EventNameType>, target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null): void {
 		if (list === null) {
 			if (source.has(target)) source.delete(target);
 
@@ -486,29 +530,35 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 	}
 
 	/** @description Map events 'before' by list, or all if not defined */
-	mapEventsBefore(target: Events<EventNameType, EmitStatesExtType>, list: Events.EventNames<EventNameType> | null = null): void {
+	mapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
 		this.mapEvents(this.states.mappersBefore, target, list);
 	}
 
 	/** @description Remove 'before' event mapper by list, or all if not defined */
-	unMapEventsBefore(target: Events<EventNameType, EmitStatesExtType>, list: Events.EventNames<EventNameType> | null = null): void {
+	unMapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
 		this.unMap(this.states.mappersBefore, target, list);
 	}
 
 	/** @description Map events 'after' by list, or all if not defined */
-	mapEventsAfter(target: Events<EventNameType, EmitStatesExtType>, list: Events.EventNames<EventNameType> | null = null): void {
+	mapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
 		this.mapEvents(this.states.mappersAfter, target, list);
 	}
 
 	/** @description Remove 'after' event mapper by list, or all if not defined */
-	unMapEventsAfter(target: Events<EventNameType, EmitStatesExtType>, list: Events.EventNames<EventNameType> | null = null): void {
+	unMapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void {
 		this.unMap(this.states.mappersAfter, target, list);
 	}
 
 	//#endregion
 
 	//#region EmitEx
-	private async processMappings<ReturnType>(target: Events.MappedEvents<EventNameType, EmitStatesExtType>, name: Events.EventName<EventNameType>, emitStates: Events.EmitStates<EventNameType, EmitStatesExtType>, ret: Events.EmitResult<ReturnType>, isAfter: boolean): Promise<Events.ProcessMappingsResult | null> {
+	private async processMappings<ReturnType>(
+		target: Events.MappedEvents<EventNameType>,
+		name: Events.EventName<EventNameType>,
+		emitStates: Events.EmitStates<EventNameType>,
+		ret: Events.EmitResult<ReturnType>,
+		isAfter: boolean
+	): Promise<Events.ProcessMappingsResult | null> {
 		let out: Events.ProcessMappingsResult | null = null;
 
 		await tools.iterate(target, async (events, instance, iter) => {
@@ -519,20 +569,19 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 			}
 
 			const states = {
-				metadata  : emitStates.metadata,
-				chainable : emitStates.chainable,
-				context   : emitStates.context,
+				metadata: emitStates.metadata,
+				chainable: emitStates.chainable,
+				context: emitStates.context,
 				fromMapper: true
-			} as Events.EmitStatesOptionable<EventNameType, EmitStatesExtType>;
+			} as Events.EmitStatesOptionable<EventNameType>;
 			const mapRets = await instance.emitEx(name, states, ...emitStates.middlewareBeforeContext.getStates().arguments);
 
-			const mwStates: Events.MiddlewareStates<EventNameType, EmitStatesExtType> | undefined =
-				      isAfter
-				      ? states?.middlewareAfterContext?.getStates()
-				      : states?.middlewareBeforeContext?.getStates();
+			const mwStates: Events.MiddlewareStates<EventNameType> | undefined = isAfter
+				? states?.middlewareAfterContext?.getStates()
+				: states?.middlewareBeforeContext?.getStates();
 			if (mwStates?.rejected) {
 				out = {
-					rejected   : true,
+					rejected: true,
 					returnValue: mwStates.returnValue
 				};
 
@@ -548,19 +597,16 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 		return out;
 	}
 
-	private async emitExMiddlewaresBefore<ReturnType>(emitStates: Events.EmitStates<EventNameType, EmitStatesExtType>): Promise<Events.MiddlewareStates<EventNameType, EmitStatesExtType>> {
+	private async emitExMiddlewaresBefore<ReturnType>(emitStates: Events.EmitStates<EventNameType>): Promise<Events.MiddlewareStates<EventNameType>> {
 		const idxs = [...this.states.middlewaresBefore.keys()].sort((a, b) => a - b);
 
 		await tools.iterate(idxs, async (idx, _, iter) => {
-			const mw = this.states.middlewaresBefore.get(idx) as Events.MiddlewareBeforeCallback<EventNameType, EmitStatesExtType>;
+			const mw = this.states.middlewaresBefore.get(idx) as Events.MiddlewareBeforeCallback<EventNameType>;
 			await mw(emitStates.middlewareBeforeContext);
 
-			const {
-				      skipped,
-				      rejected: mwRejected
-			      } = emitStates.middlewareBeforeContext.getStates();
+			const {skipped, rejected} = emitStates.middlewareBeforeContext.getStates();
 
-			if (mwRejected || skipped) {
+			if (skipped || rejected) {
 				iter.break();
 			}
 		});
@@ -568,19 +614,15 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 		return emitStates.middlewareBeforeContext.getStates();
 	}
 
-	private async emitExMiddlewaresAfter<ReturnType>(emitStates: Events.EmitStates<EventNameType, EmitStatesExtType>): Promise<Events.MiddlewareStates<EventNameType, EmitStatesExtType>> {
+	private async emitExMiddlewaresAfter<ReturnType>(emitStates: Events.EmitStates<EventNameType>): Promise<Events.MiddlewareStates<EventNameType>> {
 		const idxs = [...this.states.middlewaresAfter.keys()].sort((a, b) => a - b);
 
 		await tools.iterate(idxs, async (idx, _, iter) => {
-			const mw = this.states.middlewaresAfter.get(idx) as Events.MiddlewareAfterCallback<EventNameType, EmitStatesExtType>;
+			const mw = this.states.middlewaresAfter.get(idx) as Events.MiddlewareAfterCallback<EventNameType>;
 			await mw(emitStates.middlewareAfterContext);
 
-			const {
-				      skipped,
-				      rejected: mwRejected
-			      } = emitStates.middlewareAfterContext.getStates();
-
-			if (mwRejected || skipped) {
+			const {skipped, rejected} = emitStates.middlewareAfterContext.getStates();
+			if (skipped || rejected) {
 				iter.break();
 			}
 		});
@@ -588,26 +630,40 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 		return emitStates.middlewareAfterContext.getStates();
 	}
 
-	private getEmitExDefaultStates(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType, EmitStatesExtType> | null, args: unknown[], metadata: Events.MiddlewareMetadata): Events.EmitStates<EventNameType, EmitStatesExtType> {
-		const outStates = Object.assign({
-			chainable              : this.config.defaultChain,
-			context                : this,
-			skipMappingsAfter      : false,
-			skipMappingsBefore     : false,
-			skipMiddlewaresAfter   : false,
-			skipMiddlewaresBefore  : false,
-			fromMapper             : false,
-			metadata               : metadata,
-			middlewareBeforeContext: new EventsMiddlewareBeforeContext<EventNameType, EmitStatesExtType>(name, args, this, states, metadata),
-			middlewareAfterContext : new EventsMiddlewareAfterContext<EventNameType, EmitStatesExtType>(name, this, states, metadata),
-			sourceMapper           : this
-		}, states) as unknown as Events.EmitStates<EventNameType, EmitStatesExtType>;
+	private getEmitExDefaultStates(
+		name: Events.EventName<EventNameType>,
+		states: Events.EmitStatesOptionable<EventNameType> | null,
+		args: unknown[],
+		metadata: Events.MiddlewareMetadata
+	): Events.EmitStates<EventNameType> {
+		const outStates = Object.assign(
+			{
+				chainable: this.config.defaultChain,
+				context: this,
+				skipMappingsAfter: false,
+				skipMappingsBefore: false,
+				skipMiddlewaresAfter: false,
+				skipMiddlewaresBefore: false,
+				fromMapper: false,
+				metadata: metadata,
+				middlewareBeforeContext: new EventsMiddlewareBeforeContext<EventNameType>(name, args, this, states, metadata),
+				middlewareAfterContext: new EventsMiddlewareAfterContext<EventNameType>(name, this, states, metadata),
+				sourceMapper: this,
+				reject: false
+			},
+			states
+		) as unknown as Events.EmitStates<EventNameType>;
 
 		return Object.assign(states, outStates);
 	}
 
-	private async emitExProcessHandlers<ReturnType>(emitStates: Events.EmitStates<EventNameType, EmitStatesExtType>, eventHandlers: Events.EventHandlers, ret: Events.EmitResult<ReturnType>) {
+	private async emitExProcessHandlers<ReturnType>(emitStates: Events.EmitStates<EventNameType>, eventHandlers: Events.EventHandlers, ret: Events.EmitResult<ReturnType>) {
 		const iterateHandlers = async (row: EventHandler, id: string, iter: tools.IIteration) => {
+			if (emitStates.reject) {
+				iter.break();
+				return;
+			}
+
 			iter.key(id);
 			ret[id] = await row.cb.apply(emitStates, emitStates.middlewareBeforeContext.getArguments());
 		};
@@ -619,34 +675,36 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 		}
 	}
 
-	private async beforeEmitExProcessHandlers<ReturnType>(emitStates: Events.EmitStates<EventNameType, EmitStatesExtType>, name: Events.EventName<EventNameType>, ret: Events.EmitResult<ReturnType>): Promise<void | Events.EmitResult<ReturnType>> {
+	private async beforeEmitExProcessHandlers<ReturnType>(
+		emitStates: Events.EmitStates<EventNameType>,
+		name: Events.EventName<EventNameType>,
+		ret: Events.EmitResult<ReturnType>
+	): Promise<void | Events.EmitResult<ReturnType>> {
 		if (!emitStates.skipMappingsBefore) {
 			const res = await this.processMappings(this.states.mappersBefore, name, emitStates, ret, false);
 			if (res && res?.rejected) return res.returnValue as Events.EmitResult<ReturnType>;
 		}
 
 		if (!emitStates.skipMiddlewaresBefore) {
-			const {
-				      rejected,
-				      returnValue
-			      } = await this.emitExMiddlewaresBefore<ReturnType>(emitStates);
+			const {rejected, returnValue} = await this.emitExMiddlewaresBefore<ReturnType>(emitStates);
 			if (rejected) {
 				return returnValue as Events.EmitResult<ReturnType>;
 			}
 		}
 	}
 
-	private async afterEmitExProcessHandlers<ReturnType>(emitStates: Events.EmitStates<EventNameType, EmitStatesExtType>, name: Events.EventName<EventNameType>, ret: Events.EmitResult<ReturnType>): Promise<void | Events.EmitResult<ReturnType>> {
+	private async afterEmitExProcessHandlers<ReturnType>(
+		emitStates: Events.EmitStates<EventNameType>,
+		name: Events.EventName<EventNameType>,
+		ret: Events.EmitResult<ReturnType>
+	): Promise<void | Events.EmitResult<ReturnType>> {
 		if (!emitStates.skipMappingsAfter) {
 			const res = await this.processMappings(this.states.mappersAfter, name, emitStates, ret, true);
 			if (res && res?.rejected) return res.returnValue as Events.EmitResult<ReturnType>;
 		}
 
 		if (!emitStates.skipMiddlewaresAfter) {
-			const {
-				      rejected,
-				      returnValue
-			      } = await this.emitExMiddlewaresAfter(emitStates);
+			const {rejected, returnValue} = await this.emitExMiddlewaresAfter(emitStates);
 			if (rejected) {
 				return returnValue as Events.EmitResult<ReturnType>;
 			}
@@ -654,7 +712,11 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 	}
 
 	/** @description Advanced event emit */
-	async emitEx<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, states: Events.EmitStatesOptionable<EventNameType, EmitStatesExtType> | null, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
+	async emitEx<ArgsType extends any[] = any[], ReturnType = unknown>(
+		name: Events.EventName<EventNameType>,
+		states: Events.EmitStatesOptionable<EventNameType> | null,
+		...args: ArgsType
+	): Promise<Events.EmitResult<ReturnType>> {
 		const _return = <T>(out: T): T => {
 			if (this.mapEmitOnce) {
 				this.reset();
@@ -665,7 +727,7 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 
 		let ret: Events.EmitResult<ReturnType> = {};
 
-		states = (states || {}) as Events.EmitStatesOptionable<EventNameType, EmitStatesExtType>;
+		states = states || {};
 
 		const metadata: Events.MiddlewareMetadata = states?.metadata || {};
 		if (states?.metadata) delete states.metadata;
@@ -674,7 +736,7 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 			Object.assign(metadata, this.config.metadata);
 		}
 
-		const emitStates: Events.EmitStates<EventNameType, EmitStatesExtType> = this.getEmitExDefaultStates(name, states, args, metadata);
+		const emitStates: Events.EmitStates<EventNameType> = this.getEmitExDefaultStates(name, states, args, metadata);
 		const eventHandlers = this.states.events.get(name) as Events.EventHandlers;
 
 		const beforeProcessRet = await this.beforeEmitExProcessHandlers<ReturnType>(emitStates, name, ret);
@@ -707,19 +769,17 @@ export class Events<EventNameType = string | number | symbol, EmitStatesExtType 
 
 	/** @description Event emit (call) */
 	async emit<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
-		return this.config.defaultChain
-		       ? this.emitChain<ArgsType, ReturnType>(name, ...args)
-		       : this.emitParallel<ArgsType, ReturnType>(name, ...args);
+		return this.config.defaultChain ? this.emitChain<ArgsType, ReturnType>(name, ...args) : this.emitParallel<ArgsType, ReturnType>(name, ...args);
 	}
 
 	/** @description Event emit (call) as parallel */
 	async emitParallel<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
-		return this.emitEx<ArgsType, ReturnType>(name, {chainable: false} as Events.EmitStatesOptionable<EventNameType, EmitStatesExtType>, ...args);
+		return this.emitEx<ArgsType, ReturnType>(name, {chainable: false} as Events.EmitStatesOptionable<EventNameType>, ...args);
 	}
 
 	/** @description Event emit (call) as chain */
 	async emitChain<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>> {
-		return this.emitEx<ArgsType, ReturnType>(name, {chainable: true} as Events.EmitStatesOptionable<EventNameType, EmitStatesExtType>, ...args);
+		return this.emitEx<ArgsType, ReturnType>(name, {chainable: true} as Events.EmitStatesOptionable<EventNameType>, ...args);
 	}
 
 	//#endregion
