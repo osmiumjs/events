@@ -45,7 +45,7 @@ This project is released under MIT license.
 
 #### new Events
 
-Reference: `Events<EventNameType = string | number | symbol>(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null)`
+`Events<EventNameType = string | number | symbol>(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null)`
 
 Creates an event dispatcher instance.
 
@@ -74,7 +74,7 @@ By default is `string | number | symbol`
 
 #### on
 
-Reference: `on<ArgsType extends any[] = any[], ReturnType = any, ThisExtType extends object = {}>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType, ThisExtType>): Events.EventId`
+`on<ArgsType extends any[] = any[], ReturnType = any, ThisExtType extends object = {}>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType, ThisExtType>): Events.EventId`
 
 Register event handler
 
@@ -84,7 +84,7 @@ Register event handler
 
 #### once
 
-Reference: `once<ArgsType extends any[] = any[], ReturnType = any, ThisExtType extends object = {}>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType, ThisExtType>): Events.EventId`
+`once<ArgsType extends any[] = any[], ReturnType = any, ThisExtType extends object = {}>(name: Events.EventName<EventNameType>, cb: Events.EventCallback<EventNameType, ArgsType, ReturnType, ThisExtType>): Events.EventId`
 
 Register event and self-remove after first call
 
@@ -94,7 +94,7 @@ Register event and self-remove after first call
 
 #### wait
 
-Reference: `wait(name: Events.EventName<EventNameType>, timeout: number = -1): Promise<Array<unknown> | null>`
+`wait<ReturnType extends [] = []>(name: Events.EventName<EventNameType>, timeout: number = -1): Promise<ReturnType | null>`
 
 Await event emit
 
@@ -104,7 +104,7 @@ Await event emit
 
 #### offById
 
-Reference: `offById(targetId: Events.EventId | Events.EventIds): Events.AffectedEventId | Events.AffectedEventIds`
+`offById(targetId: Events.EventId | Events.EventIds): Events.AffectedEventId | Events.AffectedEventIds`
 
 Remove event by EventId or array of EventId
 
@@ -114,7 +114,7 @@ Remove event by EventId or array of EventId
 
 #### off
 
-Reference: `off(name: Events.EventName<EventNameType>): Events.AffectedEventIds | null`
+`off(name: Events.EventName<EventNameType>): Events.AffectedEventIds | null`
 
 Remove event by EventName
 
@@ -126,7 +126,7 @@ Remove event by EventName
 
 #### emit
 
-Reference: `async emit<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>>`
+`async emit<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>>`
 
 Event emit (call)
 
@@ -136,7 +136,7 @@ Event emit (call)
 
 #### emitParallel
 
-Reference: `async emitParallel<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>>`
+`async emitParallel<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>>`
 
 Event emit (call) as parallel (via `Promise.all`)
 
@@ -146,7 +146,7 @@ Event emit (call) as parallel (via `Promise.all`)
 
 #### emitChain
 
-Reference: `async emitChain<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>>`
+`async emitChain<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<Events.EmitResult<ReturnType>>`
 
 Event emit (call) as chain (one by one)
 
@@ -156,7 +156,7 @@ Event emit (call) as chain (one by one)
 
 #### emitOnce
 
-Reference: `async emitOnce<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<ReturnType | undefined>`
+`async emitOnce<ArgsType extends any[] = any[], ReturnType = unknown>(name: Events.EventName<EventNameType>, ...args: ArgsType): Promise<ReturnType | undefined>`
 
 Event emit (call) and return first value
 
@@ -166,7 +166,7 @@ Event emit (call) and return first value
 
 #### emitEx
 
-Reference: `async emitEx<ArgsType extends any[] = any[], ReturnType = unknown>`
+`async emitEx<ArgsType extends any[] = any[], ReturnType = unknown>`
 
 Advanced event emit
 
@@ -178,7 +178,7 @@ Advanced event emit
 
 #### clear
 
-Reference: `clear(): void`
+`clear(): void`
 
 Clear all events
 
@@ -195,7 +195,7 @@ e.emit('test');  // Nope
 
 #### reset
 
-Reference: `reset(): void`
+`reset(): void`
 
 Reset all (events, mappings, middlewares), like new Events().
 
@@ -205,7 +205,7 @@ Reset all (events, mappings, middlewares), like new Events().
 
 #### getEvents
 
-Reference: `getEvents(findStr: string | RegExp | null = null): Events.EventNames<EventNameType>`
+`getEvents(findStr: string | RegExp | null = null): Events.EventNames<EventNameType>`
 
 Get events names by RegExp pattern.
 
@@ -217,7 +217,7 @@ Will try to cast the event name to a `string` type (so that RegExp can work) usi
 
 #### exists
 
-Reference: `exists(what: Events.EventName<EventNameType> | RegExp, inMappingsToo: boolean = false): boolean`
+`exists(what: Events.EventName<EventNameType> | RegExp, inMappingsToo: boolean = false): boolean`
 
 Check event exists
 
@@ -229,7 +229,7 @@ Check event exists
 
 #### useBefore
 
-Reference: `useBefore(handler: Events.MiddlewareBeforeCallback<EventNameType>, position: number | null = null): number`
+`useBefore(handler: Events.MiddlewareBeforeCallback<EventNameType>, position: number | null = null): number`
 
 Add 'before' middleware
 
@@ -239,7 +239,7 @@ Add 'before' middleware
 
 #### unUseBefore
 
-Reference: `unUseBefore(handlerPosition: number): void`
+`unUseBefore(handlerPosition: number): void`
 
 Remove 'before' middleware by MiddlewareBefore position
 
@@ -249,7 +249,7 @@ Remove 'before' middleware by MiddlewareBefore position
 
 #### useAfter
 
-Reference: `useAfter(handler: Events.MiddlewareAfterCallback<EventNameType>, position: number | null = null): number`
+`useAfter(handler: Events.MiddlewareAfterCallback<EventNameType>, position: number | null = null): number`
 
 Add 'after' middleware
 
@@ -259,7 +259,7 @@ Add 'after' middleware
 
 #### unUseAfter
 
-Reference: unUseAfter(handlerPosition: number): void
+unUseAfter(handlerPosition: number): void
 
 Remove 'after' middleware by MiddlewareAfter id
 
@@ -271,7 +271,7 @@ Remove 'after' middleware by MiddlewareAfter id
 
 #### mapEventsBefore
 
-Reference: `mapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void`
+`mapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void`
 
 Map events 'before' by list, or all if not defined
 
@@ -281,7 +281,7 @@ Map events 'before' by list, or all if not defined
 
 #### unMapEventsBefore
 
-Reference: `unMapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void`
+`unMapEventsBefore(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void`
 
 Remove 'before' event mapper by list, or all if not defined
 
@@ -291,7 +291,7 @@ Remove 'before' event mapper by list, or all if not defined
 
 #### mapEventsAfter
 
-Reference: `mapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void`
+`mapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void`
 
 Map events 'after' by list, or all if not defined
 
@@ -301,7 +301,7 @@ Map events 'after' by list, or all if not defined
 
 #### unMapEventsAfter
 
-Reference: `unMapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void`
+`unMapEventsAfter(target: Events<EventNameType>, list: Events.EventNames<EventNameType> | null = null): void`
 
 Remove 'after' event mapper by list, or all if not defined
 

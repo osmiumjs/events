@@ -405,17 +405,22 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	/** @description Await event emit */
-	wait(name: Events.EventName<EventNameType>, timeout: number = -1): Promise<Array<unknown> | null> {
+	wait<ReturnType extends any[] = []>(name: Events.EventName<EventNameType>, timeout: number = -1): Promise<ReturnType | null> {
 		return new Promise((resolve) => {
-			const id = this.once(name, async (...args: unknown[]) => resolve(args));
+			let tId: number | null = null;
+			const id = this.once(name, async (...args: unknown[]) => {
+				if (tId !== null) clearInterval(tId);
+				resolve(args as ReturnType);
+			});
 
-			if (timeout > 0) {
-				setTimeout(() => {
-					this.offById(id);
+			if (timeout < 0) return;
 
-					resolve(null);
-				}, timeout);
-			}
+			tId = setTimeout(() => {
+				tId = null;
+				this.offById(id);
+
+				resolve(null);
+			}, timeout);
 		});
 	}
 
