@@ -240,21 +240,21 @@ export class EventsMiddlewareAfterContext<EventNameType> extends EventsMiddlewar
 }
 
 export class EventsEmit<EventNameType = EventNameTypeDefault> {
-	public readonly config: Events.Config = {
-		metadata: {},
-		defaultChain: true,
-		eventIdPrefix: '#',
-		eventIdPrefixMW: '@',
-		eventIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx',
-		instanceIdPrefix: '$',
-		instanceIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx'
-	};
+	public readonly config: Events.Config;
 
 	private mapEmitOnce: Events<EventNameType> | null;
 	private instance: Events<EventNameType>;
 
 	constructor(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null) {
-		Object.assign(this.config, config);
+		this.config = {
+			metadata: {},
+			defaultChain: true,
+			eventIdPrefix: '#',
+			eventIdPrefixMW: '@',
+			eventIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx',
+			instanceIdPrefix: '$',
+			instanceIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx'
+		};
 
 		this.mapEmitOnce = mapEmitOnce;
 		this.instance = new Events<EventNameType>(config, mapEmitOnce);
@@ -292,18 +292,10 @@ export class EventsEmit<EventNameType = EventNameTypeDefault> {
 
 export class Events<EventNameType = string | number | symbol> {
 	//#region Properties
-	private readonly config: Events.Config = {
-		metadata: {},
-		defaultChain: true,
-		eventIdPrefix: '#',
-		eventIdPrefixMW: '@',
-		eventIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx',
-		instanceIdPrefix: '$',
-		instanceIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx'
-	};
+	private readonly config: Events.Config;
 
 	states: Events.States<EventNameType> = {
-		instanceId: UID(this.config.instanceIdPrefix),
+		instanceId: UID('$'),
 		events: new Map(),
 		mappersBefore: new Map(),
 		mappersAfter: new Map(),
@@ -316,7 +308,16 @@ export class Events<EventNameType = string | number | symbol> {
 
 	//#region Constructor
 	constructor(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null) {
-		this.config = Object.assign(config, this.config, config);
+		this.config = {
+			metadata: {},
+			defaultChain: true,
+			eventIdPrefix: '#',
+			eventIdPrefixMW: '@',
+			eventIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx',
+			instanceIdPrefix: '$',
+			instanceIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx'
+		};
+
 		this.reset();
 
 		this.mapEmitOnce = mapEmitOnce;

@@ -1,7 +1,7 @@
 {
 	"name"           : "@osmium/events",
 	"description"    : "Events library",
-	"version"        : "0.10.2",
+	"version"        : "0.10.3",
 	"license"        : "MIT",
 	"author"         : {
 		"name" : "Vasiliy Isaichkin",
