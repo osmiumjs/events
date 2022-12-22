@@ -1,7 +1,20 @@
 import {isArray, isRegExp, isSet, isUndefined} from '@osmium/is';
 import {Iterate, iterateAsync, iterateParallel, iterateSync} from '@osmium/iterate';
-import {CryptTools} from '@osmium/crypt';
 import Control = Iterate.Control;
+
+function UID(prefix: string) {
+	let u = '',
+		i = 0;
+
+	while (i++ < 36) {
+		const c = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'[i - 1],
+			r = (Math.random() * 16) | 0,
+			v = c == 'x' ? r : (r & 0x3) | 0x8;
+		u += c == '-' || c == '4' ? c : v.toString(16);
+	}
+
+	return `${prefix}${u}`;
+}
 
 export class EventHandler {
 	public cb: Function;
@@ -123,16 +136,6 @@ export namespace Events {
 	};
 }
 
-const eventsConfigDefault = {
-	metadata: {},
-	defaultChain: true,
-	eventIdPrefix: '#',
-	eventIdPrefixMW: '@',
-	eventIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx',
-	instanceIdPrefix: '$',
-	instanceIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx'
-};
-
 type EventNameTypeDefault = string | number | symbol;
 
 class EventsMiddlewareContextBasic<EventNameType> {
@@ -237,7 +240,16 @@ export class EventsMiddlewareAfterContext<EventNameType> extends EventsMiddlewar
 }
 
 export class EventsEmit<EventNameType = EventNameTypeDefault> {
-	private readonly config: Events.Config = eventsConfigDefault;
+	public readonly config: Events.Config = {
+		metadata: {},
+		defaultChain: true,
+		eventIdPrefix: '#',
+		eventIdPrefixMW: '@',
+		eventIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx',
+		instanceIdPrefix: '$',
+		instanceIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx'
+	};
+
 	private mapEmitOnce: Events<EventNameType> | null;
 	private instance: Events<EventNameType>;
 
@@ -280,10 +292,18 @@ export class EventsEmit<EventNameType = EventNameTypeDefault> {
 
 export class Events<EventNameType = string | number | symbol> {
 	//#region Properties
-	private readonly config: Events.Config = eventsConfigDefault;
+	private readonly config: Events.Config = {
+		metadata: {},
+		defaultChain: true,
+		eventIdPrefix: '#',
+		eventIdPrefixMW: '@',
+		eventIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx',
+		instanceIdPrefix: '$',
+		instanceIdMask: 'xxxxxxxxxxxxxxxxxx-xxxxxx'
+	};
 
 	states: Events.States<EventNameType> = {
-		instanceId: CryptTools.UID(this.config.instanceIdPrefix, this.config.instanceIdMask),
+		instanceId: UID(this.config.instanceIdPrefix),
 		events: new Map(),
 		mappersBefore: new Map(),
 		mappersAfter: new Map(),
@@ -309,7 +329,7 @@ export class Events<EventNameType = string | number | symbol> {
 
 	//#region Tools
 	private getEventId(): Events.EventId {
-		return CryptTools.UID(this.config.eventIdPrefix, this.config.eventIdMask);
+		return UID(this.config.eventIdPrefix);
 	}
 
 	/** @description Clear event's list */

@@ -1,7 +1,7 @@
 {
 	"name"           : "@osmium/events",
 	"description"    : "Events library",
-	"version"        : "0.10.1",
+	"version"        : "0.10.2",
 	"license"        : "MIT",
 	"author"         : {
 		"name" : "Vasiliy Isaichkin",
@@ -18,7 +18,6 @@
 		"prepublishOnly": "npm run build"
 	},
 	"dependencies"   : {
-		"@osmium/crypt"  : "~0.7.1",
 		"@osmium/iterate": "~0.1.2",
 		"@osmium/is"     : "~0.1.0"
 	},
