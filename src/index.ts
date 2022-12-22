@@ -1,4 +1,7 @@
-import * as tools from '@osmium/tools';
+import {isArray, isRegExp, isSet, isUndefined} from '@osmium/is';
+import {Iterate, iterateAsync, iterateParallel, iterateSync} from '@osmium/iterate';
+import {CryptTools} from '@osmium/crypt';
+import Control = Iterate.Control;
 
 export class EventHandler {
 	public cb: Function;
@@ -280,7 +283,7 @@ export class Events<EventNameType = string | number | symbol> {
 	private readonly config: Events.Config = eventsConfigDefault;
 
 	states: Events.States<EventNameType> = {
-		instanceId: tools.UID(this.config.instanceIdPrefix, this.config.instanceIdMask),
+		instanceId: CryptTools.UID(this.config.instanceIdPrefix, this.config.instanceIdMask),
 		events: new Map(),
 		mappersBefore: new Map(),
 		mappersAfter: new Map(),
@@ -306,7 +309,7 @@ export class Events<EventNameType = string | number | symbol> {
 
 	//#region Tools
 	private getEventId(): Events.EventId {
-		return tools.UID(this.config.eventIdPrefix, this.config.eventIdMask);
+		return CryptTools.UID(this.config.eventIdPrefix, this.config.eventIdMask);
 	}
 
 	/** @description Clear event's list */
@@ -334,12 +337,12 @@ export class Events<EventNameType = string | number | symbol> {
 
 		if (findStr === null) return eventsList;
 
-		return tools.iterate(
+		return iterateSync(
 			eventsList,
 			(name) => {
 				if (!(name as unknown as string)?.toString()) return;
 
-				return (name as unknown as string).toString().match(tools.isRegExp(findStr) ? (findStr as RegExp) : new RegExp(`^${findStr}$`, 'gi')) ? name : undefined;
+				return (name as unknown as string).toString().match(isRegExp(findStr) ? (findStr as RegExp) : new RegExp(`^${findStr}$`, 'gi')) ? name : undefined;
 			},
 			[]
 		) as Events.EventNames<EventNameType>;
@@ -350,7 +353,7 @@ export class Events<EventNameType = string | number | symbol> {
 		let ret = false;
 
 		if (inMappingsToo) {
-			tools.iterate([...this.states.mappersBefore.keys(), ...this.states.mappersAfter.keys()], (mapping, _, iter) => {
+			iterateSync([...this.states.mappersBefore.keys(), ...this.states.mappersAfter.keys()], (mapping, _, iter) => {
 				ret = mapping.exists(what, true);
 
 				if (ret) iter.break();
@@ -358,11 +361,11 @@ export class Events<EventNameType = string | number | symbol> {
 			if (ret) return true;
 		}
 
-		if (tools.isRegExp(what)) {
+		if (isRegExp(what)) {
 			return !!this.getEvents(what as RegExp).length;
 		}
 
-		tools.iterate([...this.states.events.keys()], (eventName, _, iter) => {
+		iterateSync([...this.states.events.keys()], (eventName, _, iter) => {
 			if (eventName !== (what as Events.EventName<EventNameType>)) return;
 
 			ret = true;
@@ -420,7 +423,7 @@ export class Events<EventNameType = string | number | symbol> {
 				this.offById(id);
 
 				resolve(null);
-			}, timeout);
+			}, timeout) as unknown as number;
 		});
 	}
 
@@ -429,7 +432,7 @@ export class Events<EventNameType = string | number | symbol> {
 		const _off = (currentId: Events.EventId) => {
 			let found = null;
 
-			tools.iterate(this.states.events, (eventHandlers, eventName, iter) => {
+			iterateSync(this.states.events, (eventHandlers, eventName, iter) => {
 				if (!eventHandlers[currentId]) return;
 				found = currentId;
 				delete eventHandlers[currentId];
@@ -444,8 +447,8 @@ export class Events<EventNameType = string | number | symbol> {
 			return found;
 		};
 
-		if (tools.isArray(targetId)) {
-			return tools.iterate(targetId as Events.EventIds, (row) => _off(row), [] as Events.AffectedEventIds);
+		if (isArray(targetId)) {
+			return iterateSync(targetId as Events.EventIds, (row) => _off(row), [] as Events.AffectedEventIds);
 		}
 
 		return _off(targetId as Events.EventId);
@@ -505,11 +508,11 @@ export class Events<EventNameType = string | number | symbol> {
 		if (list === null) {
 			mappers = null;
 		} else {
-			if (!tools.isSet(mappers)) {
+			if (!isSet(mappers)) {
 				mappers = new Set();
 			}
 
-			tools.iterate(list, (row) => {
+			iterateSync(list, (row) => {
 				(mappers as Events.MappedEventsSet<EventNameType>).add(row);
 			});
 		}
@@ -525,9 +528,9 @@ export class Events<EventNameType = string | number | symbol> {
 		}
 
 		let mappers = source.get(target);
-		if (!tools.isSet(mappers)) return;
+		if (!isSet(mappers)) return;
 
-		tools.iterate(list, (row) => {
+		iterateSync(list, (row) => {
 			(mappers as Events.MappedEventsSet<EventNameType>).delete(row);
 		});
 
@@ -566,7 +569,7 @@ export class Events<EventNameType = string | number | symbol> {
 	): Promise<Events.ProcessMappingsResult | null> {
 		let out: Events.ProcessMappingsResult | null = null;
 
-		await tools.iterate(target, async (events, instance, iter) => {
+		await iterateAsync(target, async (events, instance, iter) => {
 			if (instance === emitStates.context) return;
 
 			if (events !== null) {
@@ -594,7 +597,7 @@ export class Events<EventNameType = string | number | symbol> {
 				return;
 			}
 
-			tools.iterate(mapRets, (row, eventId) => {
+			iterateSync(mapRets, (row, eventId) => {
 				ret[eventId] = row as ReturnType;
 			});
 		});
@@ -605,7 +608,7 @@ export class Events<EventNameType = string | number | symbol> {
 	private async emitExMiddlewaresBefore<ReturnType>(emitStates: Events.EmitStates<EventNameType>): Promise<Events.MiddlewareStates<EventNameType>> {
 		const idxs = [...this.states.middlewaresBefore.keys()].sort((a, b) => a - b);
 
-		await tools.iterate(idxs, async (idx, _, iter) => {
+		await iterateAsync(idxs, async (idx, _, iter) => {
 			const mw = this.states.middlewaresBefore.get(idx) as Events.MiddlewareBeforeCallback<EventNameType>;
 			await mw(emitStates.middlewareBeforeContext);
 
@@ -622,7 +625,7 @@ export class Events<EventNameType = string | number | symbol> {
 	private async emitExMiddlewaresAfter<ReturnType>(emitStates: Events.EmitStates<EventNameType>): Promise<Events.MiddlewareStates<EventNameType>> {
 		const idxs = [...this.states.middlewaresAfter.keys()].sort((a, b) => a - b);
 
-		await tools.iterate(idxs, async (idx, _, iter) => {
+		await iterateAsync(idxs, async (idx, _, iter) => {
 			const mw = this.states.middlewaresAfter.get(idx) as Events.MiddlewareAfterCallback<EventNameType>;
 			await mw(emitStates.middlewareAfterContext);
 
@@ -659,11 +662,11 @@ export class Events<EventNameType = string | number | symbol> {
 			states
 		) as unknown as Events.EmitStates<EventNameType>;
 
-		return Object.assign(states, outStates);
+		return Object.assign(states as object, outStates);
 	}
 
 	private async emitExProcessHandlers<ReturnType>(emitStates: Events.EmitStates<EventNameType>, eventHandlers: Events.EventHandlers, ret: Events.EmitResult<ReturnType>) {
-		const iterateHandlers = async (row: EventHandler, id: string, iter: tools.IIteration) => {
+		const iterateHandlers = async (row: EventHandler, id: string, iter: Control<any>) => {
 			if (emitStates.reject) {
 				iter.break();
 				return;
@@ -674,9 +677,9 @@ export class Events<EventNameType = string | number | symbol> {
 		};
 
 		if (emitStates.chainable) {
-			await tools.iterate(eventHandlers, iterateHandlers);
+			await iterateAsync(eventHandlers, iterateHandlers);
 		} else {
-			await tools.iterateParallel(eventHandlers, iterateHandlers);
+			await iterateParallel(eventHandlers, iterateHandlers);
 		}
 	}
 
@@ -745,7 +748,7 @@ export class Events<EventNameType = string | number | symbol> {
 		const eventHandlers = this.states.events.get(name) as Events.EventHandlers;
 
 		const beforeProcessRet = await this.beforeEmitExProcessHandlers<ReturnType>(emitStates, name, ret);
-		if (!tools.isUndefined(beforeProcessRet)) return _return(beforeProcessRet as Events.EmitResult<ReturnType>);
+		if (!isUndefined(beforeProcessRet)) return _return(beforeProcessRet as Events.EmitResult<ReturnType>);
 
 		if (eventHandlers) {
 			await this.emitExProcessHandlers<ReturnType>(emitStates, eventHandlers, ret);
@@ -754,7 +757,7 @@ export class Events<EventNameType = string | number | symbol> {
 		emitStates.middlewareAfterContext.setReturn(ret);
 
 		const afterProcessRet = await this.afterEmitExProcessHandlers(emitStates, name, ret);
-		if (!tools.isUndefined(afterProcessRet)) return _return(afterProcessRet as Events.EmitResult<ReturnType>);
+		if (!isUndefined(afterProcessRet)) return _return(afterProcessRet as Events.EmitResult<ReturnType>);
 
 		return _return(emitStates.middlewareAfterContext.getReturn());
 	}

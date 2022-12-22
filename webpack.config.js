@@ -1,26 +1,27 @@
 const path = require('path');
 
 module.exports = {
-	mode   : 'production',
+	mode: 'production',
 	devtool: 'inline-source-map',
-	entry  : {
-		main: './src/index.ts',
+	entry: {
+		main: './src/index.ts'
 	},
-	output : {
-		path         : path.resolve(__dirname, './dist'),
-		filename     : 'index.min.js',
+	output: {
+		path: path.resolve(__dirname, './dist'),
+		filename: 'index.min.js',
 		libraryTarget: 'commonjs'
 	},
 	resolve: {
 		extensions: ['.ts', '.js'],
-		fallback  : {
-			crypto: false
+		fallback: {
+			crypto: require.resolve('crypto-browserify'),
+			buffer: require.resolve('buffer')
 		}
 	},
-	module : {
+	module: {
 		rules: [
 			{
-				test  : /\.ts$/,
+				test: /\.ts$/,
 				loader: 'ts-loader'
 			}
 		]
