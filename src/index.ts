@@ -1,6 +1,5 @@
 import {isArray, isRegExp, isSet, isUndefined} from '@osmium/is';
 import {Iterate, iterateAsync, iterateParallel, iterateSync} from '@osmium/iterate';
-import Control = Iterate.Control;
 
 function UID(prefix: string) {
 	let u = '',
@@ -577,7 +576,7 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	private async emitExProcessHandlers<ReturnType>(emitStates: Events.EmitStates<EventNameType>, eventHandlers: Events.EventHandlers, ret: Events.EmitResult<ReturnType>) {
-		const iterateHandlers = async (row: EventHandler, id: string, iter: Control<any>) => {
+		const iterateHandlers = async (row: EventHandler, id: string, iter: Iterate.Control<any>) => {
 			if (emitStates.reject) {
 				iter.break();
 				return;
