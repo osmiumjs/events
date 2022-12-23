@@ -813,10 +813,3 @@ export namespace Events {
 		returnValue: undefined | unknown;
 	};
 }
-
-export default {
-	EventHandler,
-	EventsMiddlewareBeforeContext,
-	EventsMiddlewareAfterContext,
-	Events
-};
