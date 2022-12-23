@@ -7,7 +7,7 @@ function UID(prefix: string) {
 		i = 0;
 
 	while (i++ < 36) {
-		const c = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'[i - 1],
+		const c = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxxxx'[i - 1],
 			r = (Math.random() * 16) | 0,
 			v = c == 'x' ? r : (r & 0x3) | 0x8;
 		u += c == '-' || c == '4' ? c : v.toString(16);
@@ -24,116 +24,6 @@ export class EventHandler {
 		this.cb = cb;
 		this.time = time;
 	}
-}
-
-export namespace Events {
-	export type EventInstanceId = string;
-
-	export type EventName<EventNameType = string> = EventNameType;
-	export type EventId = string;
-	export type EventIds = EventId[];
-	export type AffectedEventIds = (EventId | null)[];
-	export type AffectedEventId = EventId | null;
-
-	export type EventNames<EventNameType = string> = EventName<EventNameType>[];
-
-	export type EventHandlers = Record<EventId, EventHandler>;
-	export type EventsList<EventNameType = string> = Map<EventName<EventNameType>, EventHandlers>;
-
-	export type EventCallback<EventNameType, ArgsType extends any[] = any[], ReturnType = void, EmitStatesExt extends object = {}> = (
-		this: Events.EmitStates<EventNameType> & EmitStatesExt,
-		...args: ArgsType
-	) => ReturnType | Promise<ReturnType>;
-
-	export type EmitResult<T> = Record<EventId, T>;
-
-	export type MappedEventsSet<EventNameType> = Set<EventName<EventNameType>>;
-	export type MappedEventsList<EventNameType> = MappedEventsSet<EventNameType> | null;
-	export type MappedEvents<EventNameType> = Map<Events<EventNameType>, MappedEventsList<EventNameType>>;
-
-	export type MiddlewareBeforeCallback<EventNameType> = (context: EventsMiddlewareBeforeContext<EventNameType>) => Promise<void>;
-	export type MiddlewareAfterCallback<EventNameType> = (context: EventsMiddlewareAfterContext<EventNameType>) => Promise<void>;
-	export type MiddlewaresList<MiddlewareCallbackType> = Map<number, MiddlewareCallbackType>;
-	export type MiddlewareMetadata = Record<string, unknown>;
-
-	export interface ConfigOptionable {
-		metadata?: MiddlewareMetadata;
-		defaultChain?: boolean;
-		instanceIdPrefix?: string;
-		instanceIdMask?: string;
-		eventIdPrefix?: string;
-		eventIdPrefixMW?: string;
-		eventIdMask?: string;
-	}
-
-	export interface Config extends ConfigOptionable {
-		metadata: MiddlewareMetadata;
-		defaultChain: boolean;
-		instanceIdPrefix: string;
-		instanceIdMask: string;
-		eventIdPrefix: string;
-		eventIdPrefixMW: string;
-		eventIdMask: string;
-	}
-
-	export interface States<EventNameType> {
-		instanceId: EventInstanceId;
-		events: EventsList<EventNameType>;
-		mappersBefore: MappedEvents<EventNameType>;
-		mappersAfter: MappedEvents<EventNameType>;
-		middlewaresBefore: MiddlewaresList<MiddlewareBeforeCallback<EventNameType>>;
-		middlewaresAfter: MiddlewaresList<MiddlewareAfterCallback<EventNameType>>;
-	}
-
-	export interface IEmitStatesOptionable<EventNameType> {
-		skipMiddlewaresBefore?: boolean;
-		skipMiddlewaresAfter?: boolean;
-		skipMappingsBefore?: boolean;
-		skipMappingsAfter?: boolean;
-		context?: Function | Events<EventNameType>;
-		chainable?: boolean;
-		fromMapper?: boolean;
-		sourceMapper?: Events<EventNameType> | null;
-		metadata?: Events.MiddlewareMetadata;
-		middlewareBeforeContext?: EventsMiddlewareBeforeContext<EventNameType>;
-		middlewareAfterContext?: EventsMiddlewareAfterContext<EventNameType>;
-		reject?: boolean;
-	}
-
-	export type EmitStatesOptionable<EventNameType> = IEmitStatesOptionable<EventNameType>;
-
-	export interface IEmitStates<EventNameType> {
-		skipMiddlewaresBefore: boolean;
-		skipMiddlewaresAfter: boolean;
-		skipMappingsBefore: boolean;
-		skipMappingsAfter: boolean;
-		context: Function | Events<EventNameType>;
-		sourceMapper: Events<EventNameType> | null;
-		chainable: boolean;
-		fromMapper: boolean;
-		metadata: Events.MiddlewareMetadata;
-		middlewareBeforeContext: EventsMiddlewareBeforeContext<EventNameType>;
-		middlewareAfterContext: EventsMiddlewareAfterContext<EventNameType>;
-		reject: boolean;
-	}
-
-	export type EmitStates<EventNameType> = IEmitStates<EventNameType>;
-
-	export interface MiddlewareStates<EventNameType> {
-		context: Events<EventNameType>;
-		emitStates: Events.EmitStatesOptionable<EventNameType> | null;
-		eventName: EventName<EventNameType>;
-		metadata: MiddlewareMetadata;
-		rejected: boolean;
-		returnValue: undefined | unknown;
-		arguments: unknown[];
-		skipped: boolean;
-	}
-
-	export type ProcessMappingsResult = {
-		rejected: boolean;
-		returnValue: undefined | unknown;
-	};
 }
 
 type EventNameTypeDefault = string | number | symbol;
@@ -812,6 +702,116 @@ export class Events<EventNameType = string | number | symbol> {
 	}
 
 	//#endregion
+}
+
+export namespace Events {
+	export type EventInstanceId = string;
+
+	export type EventName<EventNameType = string> = EventNameType;
+	export type EventId = string;
+	export type EventIds = EventId[];
+	export type AffectedEventIds = (EventId | null)[];
+	export type AffectedEventId = EventId | null;
+
+	export type EventNames<EventNameType = string> = EventName<EventNameType>[];
+
+	export type EventHandlers = Record<EventId, EventHandler>;
+	export type EventsList<EventNameType = string> = Map<EventName<EventNameType>, EventHandlers>;
+
+	export type EventCallback<EventNameType, ArgsType extends any[] = any[], ReturnType = void, EmitStatesExt extends object = {}> = (
+		this: Events.EmitStates<EventNameType> & EmitStatesExt,
+		...args: ArgsType
+	) => ReturnType | Promise<ReturnType>;
+
+	export type EmitResult<T> = Record<EventId, T>;
+
+	export type MappedEventsSet<EventNameType> = Set<EventName<EventNameType>>;
+	export type MappedEventsList<EventNameType> = MappedEventsSet<EventNameType> | null;
+	export type MappedEvents<EventNameType> = Map<Events<EventNameType>, MappedEventsList<EventNameType>>;
+
+	export type MiddlewareBeforeCallback<EventNameType> = (context: EventsMiddlewareBeforeContext<EventNameType>) => Promise<void>;
+	export type MiddlewareAfterCallback<EventNameType> = (context: EventsMiddlewareAfterContext<EventNameType>) => Promise<void>;
+	export type MiddlewaresList<MiddlewareCallbackType> = Map<number, MiddlewareCallbackType>;
+	export type MiddlewareMetadata = Record<string, unknown>;
+
+	export interface ConfigOptionable {
+		metadata?: MiddlewareMetadata;
+		defaultChain?: boolean;
+		instanceIdPrefix?: string;
+		instanceIdMask?: string;
+		eventIdPrefix?: string;
+		eventIdPrefixMW?: string;
+		eventIdMask?: string;
+	}
+
+	export interface Config extends ConfigOptionable {
+		metadata: MiddlewareMetadata;
+		defaultChain: boolean;
+		instanceIdPrefix: string;
+		instanceIdMask: string;
+		eventIdPrefix: string;
+		eventIdPrefixMW: string;
+		eventIdMask: string;
+	}
+
+	export interface States<EventNameType> {
+		instanceId: EventInstanceId;
+		events: EventsList<EventNameType>;
+		mappersBefore: MappedEvents<EventNameType>;
+		mappersAfter: MappedEvents<EventNameType>;
+		middlewaresBefore: MiddlewaresList<MiddlewareBeforeCallback<EventNameType>>;
+		middlewaresAfter: MiddlewaresList<MiddlewareAfterCallback<EventNameType>>;
+	}
+
+	export interface IEmitStatesOptionable<EventNameType> {
+		skipMiddlewaresBefore?: boolean;
+		skipMiddlewaresAfter?: boolean;
+		skipMappingsBefore?: boolean;
+		skipMappingsAfter?: boolean;
+		context?: Function | Events<EventNameType>;
+		chainable?: boolean;
+		fromMapper?: boolean;
+		sourceMapper?: Events<EventNameType> | null;
+		metadata?: Events.MiddlewareMetadata;
+		middlewareBeforeContext?: EventsMiddlewareBeforeContext<EventNameType>;
+		middlewareAfterContext?: EventsMiddlewareAfterContext<EventNameType>;
+		reject?: boolean;
+	}
+
+	export type EmitStatesOptionable<EventNameType> = IEmitStatesOptionable<EventNameType>;
+
+	export interface IEmitStates<EventNameType> {
+		skipMiddlewaresBefore: boolean;
+		skipMiddlewaresAfter: boolean;
+		skipMappingsBefore: boolean;
+		skipMappingsAfter: boolean;
+		context: Function | Events<EventNameType>;
+		sourceMapper: Events<EventNameType> | null;
+		chainable: boolean;
+		fromMapper: boolean;
+		metadata: Events.MiddlewareMetadata;
+		middlewareBeforeContext: EventsMiddlewareBeforeContext<EventNameType>;
+		middlewareAfterContext: EventsMiddlewareAfterContext<EventNameType>;
+		reject: boolean;
+	}
+
+	export type EmitStates<EventNameType> = IEmitStates<EventNameType>;
+
+	export interface MiddlewareStates<EventNameType> {
+		context: Events<EventNameType>;
+		emitStates: Events.EmitStatesOptionable<EventNameType> | null;
+		eventName: EventName<EventNameType>;
+		metadata: MiddlewareMetadata;
+		rejected: boolean;
+		returnValue: undefined | unknown;
+		arguments: unknown[];
+		skipped: boolean;
+	}
+
+	export type ProcessMappingsResult = {
+		rejected: boolean;
+		returnValue: undefined | unknown;
+	};
 }
 
 export default {
