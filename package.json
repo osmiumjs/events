@@ -1,7 +1,7 @@
 {
 	"name"           : "@osmium/events",
 	"description"    : "Events library",
-	"version"        : "0.10.6",
+	"version"        : "0.10.7",
 	"license"        : "MIT",
 	"author"         : {
 		"name" : "Vasiliy Isaichkin",
@@ -22,24 +22,24 @@
 		"@osmium/is"     : "~0.1.0"
 	},
 	"devDependencies": {
-		"@types/chai"                     : "^4.3.4",
+		"@types/chai"                     : "^4.3.5",
 		"@types/mocha"                    : "^10.0.1",
-		"@types/node"                     : "~18.11.17",
-		"@typescript-eslint/eslint-plugin": "^5.47.0",
-		"@typescript-eslint/parser"       : "^5.47.0",
+		"@types/node"                     : "~18.16.14",
+		"@typescript-eslint/eslint-plugin": "^5.59.7",
+		"@typescript-eslint/parser"       : "^5.59.7",
 		"buffer"                          : "~6.0.3",
 		"chai"                            : "~4.3.7",
 		"crypto-browserify"               : "~3.12.0",
-		"eslint"                          : "~8.30.0",
+		"eslint"                          : "~8.41.0",
 		"eslint-plugin-smarter-tabs"      : "~1.2.0",
 		"mocha"                           : "~10.2.0",
-		"prettier"                        : "~2.8.1",
-		"rimraf"                          : "^3.0.2",
-		"terser"                          : "^5.16.1",
-		"ts-loader"                       : "~9.4.2",
+		"prettier"                        : "~2.8.8",
+		"rimraf"                          : "^5.0.1",
+		"terser"                          : "^5.17.6",
+		"ts-loader"                       : "~9.4.3",
 		"ts-node"                         : "^10.9.1",
-		"typescript"                      : "~4.9.4",
-		"webpack"                         : "~5.75.0",
-		"webpack-cli"                     : "~4.10.0"
+		"typescript"                      : "~4.9.5",
+		"webpack"                         : "~5.83.1",
+		"webpack-cli"                     : "~5.1.1"
 	}
 }
