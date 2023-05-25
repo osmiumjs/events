@@ -195,6 +195,18 @@ export class Events<EventNameType = string | number | symbol> {
 	private mapEmitOnce: Events<EventNameType> | null;
 	//#endregion
 
+	//#region Static
+	/** @description Create Events<EventNameType> instance */
+	static createInstance<EventNameType = string | number | symbol>(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null): Events<EventNameType> {
+		return new Events<EventNameType>(config, mapEmitOnce);
+	}
+
+	/** @description Make UID */
+	static UID(prefix: string): string {
+		return UID(prefix);
+	}
+	//#endregion
+
 	//#region Constructor
 	constructor(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null) {
 		this.config = {
