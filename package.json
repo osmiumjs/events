@@ -1,14 +1,14 @@
 {
 	"name"           : "@osmium/events",
 	"description"    : "Events library",
-	"version"        : "0.10.9",
+	"version"        : "0.10.11",
 	"license"        : "MIT",
 	"author"         : {
 		"name" : "Vasiliy Isaichkin",
 		"email": "vasiliy@isaichkin.ru"
 	},
 	"main"           : "./dist/index.js",
-	"types"          : "./defs/index.d.ts",
+	"types"          : "./dist/index.d.ts",
 	"scripts"        : {
 		"compile"       : "tsc",
 		"test"          : "mocha -r node_modules/ts-node/register ./tests/index.ts",

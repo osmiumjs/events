@@ -197,11 +197,6 @@ export class Events<EventNameType = string | number | symbol> {
 	//#endregion
 
 	//#region Static
-	/** @description Create Events<EventNameType> instance */
-	static createInstance<EventNameType = string | number | symbol>(config: Partial<Events.Config> = {}, mapEmitOnce: Events<EventNameType> | null = null): Events<EventNameType> {
-		return new Events<EventNameType>(config, mapEmitOnce);
-	}
-
 	/** @description Make UID */
 	static UID(prefix: string): string {
 		return UID(prefix);
