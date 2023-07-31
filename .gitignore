@@ -15,3 +15,4 @@ tsconfig.*buildinfo
 yarn-debug.log*
 yarn-error.log*
 /test.ts
+/test2.ts

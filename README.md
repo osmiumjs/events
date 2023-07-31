@@ -45,7 +45,7 @@ This project is released under MIT license.
 
 #### new Events
 
-`Events<EventNameType = string | number | symbol>(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null)`
+`Events<EventNameType = string | number | symbol, MiddlewareMetadataType extends Record<string, unknown>>(config: Events.ConfigOptionable = {}, mapEmitOnce: Events<EventNameType> | null = null)`
 
 Creates an event dispatcher instance.
 
